@@ -99,7 +99,8 @@ h3 { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: u
 }
 button.card:hover:not(:disabled), .card.clickable:hover { transform: translateY(-3px); }
 .card.big { width: 100%; max-width: 560px; min-height: 0; padding: 16px 18px 44px; }
-.card.mini { width: 100%; min-height: 0; padding: 8px 10px 8px 44px; flex-direction: row; align-items: baseline; gap: 10px; box-shadow: none; }
+.card.mini { width: 100%; min-height: 0; padding: 8px 10px 8px 46px; gap: 2px; box-shadow: none; }
+.card.mini .foot { position: static; margin-top: 2px; }
 .card.mini .cost { top: 7px; }
 .card.selected { outline: 3px solid var(--accent); outline-offset: 1px; }
 .card.spent { opacity: .55; }
@@ -147,11 +148,11 @@ button.card:hover:not(:disabled), .card.clickable:hover { transform: translateY(
 .clause-label { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--paper-2); font-weight: 700; margin-bottom: 2px; }
 
 /* ---------- workshop ---------- */
-.ws { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(200px, 250px); gap: 16px; align-items: start; }
-@media (max-width: 980px) { .ws { grid-template-columns: minmax(0, 1fr); } }
-.decklist { display: grid; gap: 6px; max-height: 70vh; overflow: auto; padding: 2px; }
-@media (max-width: 980px) { .decklist { max-height: 260px; } }
-.tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.ws { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .ws { grid-template-columns: minmax(0, 1fr); } }
+.decklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 8px; padding: 2px; }
+.tools { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .tools { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .tool { border: 1px solid var(--edge); background: var(--mat); border-radius: 8px; padding: 8px 6px; text-align: center; display: grid; gap: 2px; }
 .tool .tn { font-weight: 700; }
 .tool .tc { font-family: var(--f-mono); font-size: 11px; color: var(--fg-2); }

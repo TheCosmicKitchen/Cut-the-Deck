@@ -310,12 +310,13 @@ function workshopView(inRun) {
   return `<div class="stack">
     ${inRun ? `<div class="row" style="justify-content:space-between"><div><h3>Workshop</h3><h2>Cut up your deck</h2></div><button class="btn primary" type="button" data-act="leavews">Continue</button></div>` : ''}
     ${canEdit ? '' : `<div class="banner">Edits open at Workshops and after fights. Turn on Sandbox in the Lab to edit any time.</div>`}
+    <div class="stack" style="gap:8px">
+      <div class="tools">${tools}</div>
+      ${canEdit ? `<div class="hand-note">${esc(help)}</div>` : ''}
+    </div>
     <div class="ws">
-      <div class="panel stack"><h3>Deck · ${run.deck.length}</h3><div class="decklist">${list}</div></div>
       <div class="stack" style="min-width:0">
-        <div class="tools">${tools}</div>
-        ${canEdit ? `<div class="hand-note">${esc(help)}</div>` : ''}
-        ${sel ? cardHTML(sel, { cls: ['big'], showEmpty: canEdit, chunkAct: canEdit ? 'wchunk' : null, fitType }) : '<p class="sub">Your deck is empty.</p>'}
+        ${sel ? cardHTML(sel, { cls: ['big'], showEmpty: canEdit && ws.tool === 'glue', chunkAct: canEdit ? 'wchunk' : null, fitType }) : '<p class="sub">Your deck is empty.</p>'}
         <div class="preview" id="preview">${sel ? esc(costLine(sel)) : ''}</div>
         ${shredBox}
       </div>
@@ -325,6 +326,7 @@ function workshopView(inRun) {
         <p class="sub" style="font-size:13px">Ink ${run.sandbox ? '∞ (sandbox)' : run.ink}${frees ? ` · ${esc(frees)}` : ''}</p>
       </div>
     </div>
+    <div class="stack" style="gap:8px"><h3>Deck · ${run.deck.length} · tap a card to edit it</h3><div class="decklist">${list}</div></div>
   </div>`;
 }
 
