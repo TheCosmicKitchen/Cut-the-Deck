@@ -6,11 +6,14 @@ import * as E from '../engine/edits.js';
 import * as C from '../engine/combat.js';
 import * as R from '../engine/run.js';
 import { fuzz } from '../engine/fuzz.js';
+import { TUTORIAL, newTutorialRun } from './tutorial.js';
 
 const SAVE_KEY = 'cut-the-deck.v1';
 const app = {
   db: null,
-  run: null,
+  run: null,       // the real run
+  sandbox: null,   // a separate run-shaped deck: every card, free edits
+  tut: null,       // { run, step } while the tutorial is open
   view: 'run',
   ws: { sel: null, tool: null, clip: null, confirmShred: false },
   ctool: null,
@@ -34,17 +37,26 @@ async function boot() {
   const saved = window.claude?.hot?.data?.app ?? readSave();
   if (saved?.run?.deck) {
     app.run = saved.run;
-    app.view = saved.view ?? 'run';
+    app.run.sandbox = false;
+    app.view = ['run', 'workshop', 'sandbox', 'library'].includes(saved.view) ? saved.view : 'run';
   } else app.run = R.newRun(app.db);
-  window.claude?.hot?.snapshot?.(() => ({ app: { run: app.run, view: app.view } }));
+  app.sandbox = saved?.sandbox?.deck ? saved.sandbox : newSandbox();
+  window.claude?.hot?.snapshot?.(() => ({ app: { run: app.run, sandbox: app.sandbox, view: app.view } }));
   render();
+}
+
+function newSandbox() {
+  const sb = R.newRun(app.db, 1, true);
+  sb.deck = app.db.cards.cards.map((def) => G.makeCard(def, R.newCardUid(sb)));
+  return sb;
 }
 
 function readSave() {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { return null; }
 }
 function writeSave() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ run: app.run, view: app.view })); } catch { /* storage unavailable */ }
+  const view = app.view === 'tutorial' ? 'workshop' : app.view;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ run: app.run, sandbox: app.sandbox, view })); } catch { /* storage unavailable */ }
 }
 
 let toastTimer = 0;
@@ -61,6 +73,17 @@ function result(res) {
   return res.ok;
 }
 
+// Which deck the Workshop tools act on right now.
+function editRun() {
+  if (app.view === 'tutorial') return app.tut.run;
+  if (app.view === 'sandbox') return app.sandbox;
+  return app.run;
+}
+
+function resetWs() {
+  app.ws = { sel: null, tool: null, clip: null, confirmShred: false };
+}
+
 // ---------- card rendering ----------
 
 function costHTML(card) {
@@ -73,16 +96,18 @@ function costHTML(card) {
 function chunkSpan(tok, ci, uid, o, tele) {
   const { slot, chunk } = tok;
   const act = o.chunkAct ? ` data-act="${o.chunkAct}" data-uid="${uid}" data-ci="${ci}" data-slot="${slot}"` : '';
+  const hint = o.hint && o.hint.ci === ci && o.hint.slot === slot ? ' hint' : '';
   if (!chunk) {
     const req = G.REQUIRED.includes(slot);
     const fits = o.fitType === slot ? ' fits' : '';
-    return `<span class="chunk empty t-${slot}${req ? ' req' : ''}${fits}"${act} title="Empty ${slot} slot">${slot}</span>`;
+    return `<span class="chunk empty t-${slot}${req ? ' req' : ''}${fits}${hint}"${act} title="Empty ${slot} slot">${slot}</span>`;
   }
   const cls = ['chunk', 't-' + slot];
   if (chunk.muted) cls.push('muted');
   if (chunk.redacted) cls.push('redacted');
   if (chunk.enemyEdit) cls.push('enemy');
   if (o.fitType === slot) cls.push('fits');
+  if (hint) cls.push('hint');
   const t = tele.find((x) => x.ci === ci && x.slot === slot);
   if (t) cls.push('tele');
   let title = `${slot}${chunk.muted ? ' (muted)' : ''}${chunk.redacted ? ' (blacked out by an enemy)' : ''}${chunk.enemyEdit ? ' (edited by an enemy)' : ''}`;
@@ -125,18 +150,27 @@ function cardHTML(card, o = {}) {
 
 // ---------- shell ----------
 
-const TABS = [['run', 'Run'], ['workshop', 'Workshop'], ['library', 'Library'], ['lab', 'Lab']];
+const TABS = [['run', 'Run'], ['workshop', 'Workshop'], ['sandbox', 'Sandbox'], ['library', 'Library']];
 
 function render() {
-  const run = app.run;
-  $('#tabs').innerHTML = TABS.map(([id, label]) => `<button type="button" data-act="tab" data-id="${id}"${app.view === id ? ' aria-current="page"' : ''}>${label}</button>`).join('');
-  $('#status').innerHTML = `
-    <span title="Hit points">HP <b>${run.hp}/${run.maxHp}</b></span>
-    <span title="Crafting currency">Ink <b>${run.sandbox ? '∞' : run.ink}</b></span>
-    <span>Deck <b>${run.deck.length}</b></span>
-    <span>Clipboard <b>${run.clipboard.length}/${app.db.rules.clipboardSize}</b></span>
-    ${run.sandbox ? '<span class="pill sandbox">Sandbox</span>' : ''}`;
-  const view = { run: runView, workshop: () => workshopView(false), library: libraryView, lab: labView }[app.view];
+  const db = app.db;
+  const current = app.view === 'tutorial' ? 'workshop' : app.view;
+  $('#tabs').innerHTML = TABS.map(([id, label]) => `<button type="button" data-act="tab" data-id="${id}"${current === id ? ' aria-current="page"' : ''}>${label}</button>`).join('');
+  const r = editRun();
+  if (app.view === 'sandbox' || app.view === 'tutorial') {
+    $('#status').innerHTML = `
+      <span class="pill sandbox">${app.view === 'tutorial' ? 'Tutorial' : 'Sandbox'}</span>
+      <span>Ink <b>${r.sandbox ? '∞' : r.ink}</b></span>
+      <span>Deck <b>${r.deck.length}</b></span>
+      <span>Clipboard <b>${r.clipboard.length}/${db.rules.clipboardSize}</b></span>`;
+  } else {
+    $('#status').innerHTML = `
+      <span title="Hit points">HP <b>${r.hp}/${r.maxHp}</b></span>
+      <span title="Crafting currency">Ink <b>${r.ink}</b></span>
+      <span>Deck <b>${r.deck.length}</b></span>
+      <span>Clipboard <b>${r.clipboard.length}/${db.rules.clipboardSize}</b></span>`;
+  }
+  const view = { run: runView, workshop: workshopTab, sandbox: sandboxView, library: libraryView, tutorial: tutorialView }[app.view];
   app.combatView = null;
   $('#main').innerHTML = view();
   writeSave();
@@ -159,6 +193,10 @@ function trackHTML() {
   }).join('')}</div>`;
 }
 
+const tutorialPrompt = () => `<div class="banner row" style="justify-content:space-between">
+  <span>New to cutting up cards? The tutorial walks you through every editing tool on a practice deck in about two minutes.</span>
+  <button class="btn" type="button" data-act="tutorial">Start the tutorial</button></div>`;
+
 function runView() {
   const run = app.run;
   const db = app.db;
@@ -170,7 +208,7 @@ function runView() {
       <p class="sub">${node.type === 'workshop' ? `+${db.rules.ink.workshopBonus} Ink, then edit your deck with any tool.` : 'Win to earn Ink, a reward card and whatever the enemies drop.'}</p></div>
       <div class="row"><button class="btn primary" type="button" data-act="enter">Enter</button>
       <button class="btn" type="button" data-act="tab" data-id="workshop">Look at your deck</button></div>
-    </div>`;
+    </div>${run.node === 0 ? tutorialPrompt() : ''}`;
   } else if (run.phase === 'combat') {
     body = combatHTML(run.combat, false);
   } else if (run.phase === 'reward') {
@@ -182,7 +220,7 @@ function runView() {
       <div class="row"><button class="btn" type="button" data-act="reward" data-id="">Skip the card</button></div>
     </div>`;
   } else if (run.phase === 'workshop') {
-    return trackHTML() + workshopView(true);
+    return trackHTML() + workshopView(run, { inRun: true, canEdit: true });
   } else {
     const won = run.phase === 'victory';
     body = `<div class="panel result stack">
@@ -230,7 +268,7 @@ function combatHTML(s, isLab) {
   const resultBox = over ? `<div class="panel result stack">
       <h2>${s.phase === 'won' ? 'Victory' : 'Defeated'}</h2>
       <div class="row" style="justify-content:center">${isLab
-        ? `<button class="btn primary" type="button" data-act="labfight">Fight again</button><button class="btn" type="button" data-act="labclear">Close</button>`
+        ? `<button class="btn primary" type="button" data-act="labfight">Fight again</button><button class="btn" type="button" data-act="labclear">Back to editing</button>`
         : `<button class="btn primary" type="button" data-act="finish">Continue</button>`}</div>
     </div>` : '';
 
@@ -273,50 +311,59 @@ const TOOL_INFO = {
   shred: ['Shred', 'Destroy this card; its chunks go to your clipboard.'],
 };
 
-function workshopView(inRun) {
-  const db = app.db;
+function workshopTab() {
   const run = app.run;
+  const canEdit = run.phase === 'workshop';
+  const note = canEdit ? '' : `<div class="banner row" style="justify-content:space-between"><span>Edits open at Workshops and after fights. To try things out any time, use the Sandbox.</span><span class="row"><button class="btn" type="button" data-act="tab" data-id="sandbox">Open the Sandbox</button><button class="btn" type="button" data-act="tutorial">Tutorial</button></span></div>`;
+  return note + workshopView(run, { canEdit });
+}
+
+// o: { inRun, canEdit, hint: { uid, ci, slot, deckUid } }
+function workshopView(run, o = {}) {
+  const db = app.db;
   const ws = app.ws;
-  const canEdit = run.phase === 'workshop' || run.sandbox;
+  const canEdit = !!o.canEdit;
   if (!run.deck.some((c) => c.uid === ws.sel)) ws.sel = run.deck[0]?.uid ?? null;
   const sel = run.deck.find((c) => c.uid === ws.sel);
+  const hint = o.hint ?? {};
 
   const list = run.deck.map((c) => cardHTML(c, {
-    act: 'wsel', cls: ['mini', c.uid === ws.sel ? 'selected' : '', ws.tool === 'merge' && c.uid !== ws.sel ? 'clickable' : ''],
+    act: 'wsel', cls: ['mini', c.uid === ws.sel ? 'selected' : '', ws.tool === 'merge' && c.uid !== ws.sel ? 'clickable' : '', hint.deckUid === c.uid ? 'hint' : ''],
   })).join('');
 
   const tools = Object.keys(TOOL_INFO).map((t) => {
     const { ink, free } = E.toolCost(db, run, t);
     const cost = free ? `free ×${run.freeUses[t]}` : ink < 0 ? `+${-ink} Ink` : `${ink} Ink`;
-    return `<button type="button" class="tool" data-act="wtool" data-tool="${t}" aria-pressed="${ws.tool === t}" title="${esc(TOOL_INFO[t][1])}" ${canEdit ? '' : 'disabled'}><span class="tn">${TOOL_INFO[t][0]}</span><span class="tc">${cost}</span></button>`;
+    return `<button type="button" class="tool${hint.tool === t && ws.tool !== t ? ' hint' : ''}" data-act="wtool" data-tool="${t}" aria-pressed="${ws.tool === t}" title="${esc(TOOL_INFO[t][1])}" ${canEdit ? '' : 'disabled'}><span class="tn">${TOOL_INFO[t][0]}</span><span class="tc">${cost}</span></button>`;
   }).join('');
 
   const fitType = ws.tool === 'glue' && ws.clip != null ? run.clipboard[ws.clip]?.type : null;
   let help = canEdit ? (ws.tool ? TOOL_INFO[ws.tool][1] : 'Pick a tool, then tap a chunk on the card.') : '';
-  if (ws.tool === 'glue') help = ws.clip == null ? 'Pick a chunk on your clipboard, then tap a matching slot.' : `Tap a ${fitType} slot (outlined) to paste.`;
+  if (ws.tool === 'glue') help = ws.clip == null ? 'Pick a chunk on your clipboard, then tap a matching slot.' : `Tap ${fitType === 'amount' ? 'an' : 'a'} ${fitType} slot (outlined) to paste.`;
   if (ws.tool === 'merge') help = `Tap another card in your deck to fold it into ${sel?.name ?? 'this card'}.`;
 
   const shredBox = ws.tool === 'shred' && sel ? `<div class="row">${ws.confirmShred
     ? `<button class="btn danger" type="button" data-act="shred">Yes, shred ${esc(sel.name)}</button><button class="btn" type="button" data-act="wtool" data-tool="shred">Keep it</button>`
-    : `<button class="btn danger" type="button" data-act="shredask">Shred ${esc(sel.name)}</button>`}</div>` : '';
+    : `<button class="btn danger${hint.shred ? ' hint' : ''}" type="button" data-act="shredask">Shred ${esc(sel.name)}</button>`}</div>` : '';
 
   const clip = Array.from({ length: db.rules.clipboardSize }, (_, i) => {
     const ch = run.clipboard[i];
     if (!ch) return `<div class="slot emptyslot"></div>`;
-    return `<div class="slot${ws.clip === i ? ' sel' : ''}"><button type="button" class="pickc" data-act="clip" data-i="${i}" title="${ch.type}"><span class="chunk t-${ch.type}">${esc(G.chunkLabel(db, ch))}</span></button><button type="button" class="x" data-act="dropclip" data-i="${i}" title="Drop this chunk" aria-label="Drop">×</button></div>`;
+    const h = hint.clipType === ch.type && ws.clip !== i ? ' hint' : '';
+    return `<div class="slot${ws.clip === i ? ' sel' : ''}${h}"><button type="button" class="pickc" data-act="clip" data-i="${i}" title="${ch.type}"><span class="chunk t-${ch.type}">${esc(G.chunkLabel(db, ch))}</span></button><button type="button" class="x" data-act="dropclip" data-i="${i}" title="Drop this chunk" aria-label="Drop">×</button></div>`;
   }).join('');
   const frees = Object.entries(run.freeUses).filter(([, n]) => n > 0).map(([t, n]) => `${n} free ${t}`).join(', ');
+  const bigHint = hint.uid === sel?.uid ? { ci: hint.ci, slot: hint.slot } : null;
 
   return `<div class="stack">
-    ${inRun ? `<div class="row" style="justify-content:space-between"><div><h3>Workshop</h3><h2>Cut up your deck</h2></div><button class="btn primary" type="button" data-act="leavews">Continue</button></div>` : ''}
-    ${canEdit ? '' : `<div class="banner">Edits open at Workshops and after fights. Turn on Sandbox in the Lab to edit any time.</div>`}
+    ${o.inRun ? `<div class="row" style="justify-content:space-between"><div><h3>Workshop</h3><h2>Cut up your deck</h2></div><button class="btn primary" type="button" data-act="leavews">Continue</button></div>` : ''}
     <div class="stack" style="gap:8px">
       <div class="tools">${tools}</div>
       ${canEdit ? `<div class="hand-note">${esc(help)}</div>` : ''}
     </div>
     <div class="ws">
       <div class="stack" style="min-width:0">
-        ${sel ? cardHTML(sel, { cls: ['big'], showEmpty: canEdit && ws.tool === 'glue', chunkAct: canEdit ? 'wchunk' : null, fitType }) : '<p class="sub">Your deck is empty.</p>'}
+        ${sel ? cardHTML(sel, { cls: ['big'], showEmpty: canEdit && ws.tool === 'glue', chunkAct: canEdit ? 'wchunk' : null, fitType, hint: bigHint }) : '<p class="sub">Your deck is empty.</p>'}
         <div class="preview" id="preview">${sel ? esc(costLine(sel)) : ''}</div>
         ${shredBox}
       </div>
@@ -333,18 +380,136 @@ function workshopView(inRun) {
 function costLine(card, next) {
   const c = G.cardCost(app.db, card);
   const fmt = (c) => (!c ? 'Broken' : `${c.cost}${c.x ? '+X' : ''} energy`);
-  if (next === undefined) return `Cost: ${fmt(c)}`;
-  return next === null ? `Cost: ${fmt(c)}` : `Cost: ${fmt(c)} → ${fmt(G.cardCost(app.db, next))}`;
+  if (next === undefined || next === null) return `Cost: ${fmt(c)}`;
+  return `Cost: ${fmt(c)} → ${fmt(G.cardCost(app.db, next))}`;
+}
+
+// ---------- sandbox ----------
+
+function pantryHTML() {
+  const db = app.db;
+  const groups = [
+    ['trigger', Object.keys(db.chunks.trigger).filter((id) => id !== 'played')],
+    ['verb', Object.keys(db.chunks.verb)],
+    ['amount', G.chunkIds(db, 'amount')],
+    ['repeat', Object.keys(db.chunks.repeat)],
+    ['target', Object.keys(db.chunks.target)],
+    ['condition', Object.keys(db.chunks.condition).flatMap((id) => [id, '!' + id])],
+  ];
+  return groups.map(([type, ids]) => `<div class="pantry-row"><span class="role">${type}</span><div class="legend">${ids.map((id) => {
+    const neg = typeof id === 'string' && id.startsWith('!');
+    const ch = { type, id: neg ? id.slice(1) : id, neg };
+    return `<button type="button" class="pchip" data-act="pantry" data-type="${type}" data-id="${esc(id)}"><span class="chunk t-${type}">${esc(G.chunkLabel(db, ch))}</span></button>`;
+  }).join('')}</div></div>`).join('');
+}
+
+function sandboxView() {
+  const db = app.db;
+  const lab = app.lab;
+  const sb = app.sandbox;
+  if (lab.combat) {
+    return `<div class="stack"><div class="row" style="justify-content:space-between"><div><h3>Sandbox</h3><h2>Test fight</h2><p class="sub">Your sandbox deck at full HP. Fight edits vanish when it ends.</p></div><button class="btn" type="button" data-act="labclear">Back to editing</button></div>${combatHTML(lab.combat, true)}</div>`;
+  }
+  const opts = Object.entries(db.enemies.enemies).map(([k, e]) => `<option value="${k}">${esc(e.name)} (${e.hp} HP)</option>`).join('');
+  const lib = db.cards.cards.map((def) => `<button type="button" class="libadd" data-act="addcard" data-id="${def.id}" title="Add a fresh copy to the sandbox deck"><b>${esc(def.name)}</b><span>+ Add</span></button>`).join('');
+  const f = lab.fuzz;
+  const fuzzOut = f ? `<p class="sub">${f.ok ? 'Passed' : '<b>Failed</b>'}: ${f.turnsPlayed} turns across ${f.decks} random decks. Worst turn used ${Math.round(f.maxRatio.plays * 100)}% of the play limit, ${Math.round(f.maxRatio.draws * 100)}% of the draw limit and ${Math.round(f.maxRatio.resolutions * 100)}% of the resolution limit. Safety net hit ${f.safetyNet} times.</p>${f.failures.length ? `<pre>${esc(JSON.stringify(f.failures, null, 1))}</pre>` : ''}` : '';
+
+  return `<div class="stack">
+    <div class="row" style="justify-content:space-between;align-items:flex-end">
+      <div><h3>Sandbox</h3><h2>Every card, free edits</h2><p class="sub">This deck is separate from your run. Edit anything, add any card or chunk, then test it in a fight.</p></div>
+      <div class="row"><button class="btn" type="button" data-act="tutorial">Tutorial</button><button class="btn" type="button" data-act="sbreset">Reset sandbox</button></div>
+    </div>
+    <div class="panel stack">
+      <div class="row" style="justify-content:space-between"><h3>Test fight</h3></div>
+      <div class="row">${lab.enemies.map((k, i) => `<span class="pill">${esc(db.enemies.enemies[k].name)} <button type="button" class="x" style="border:none;background:none;padding:0" data-act="labrm" data-i="${i}" aria-label="Remove">×</button></span>`).join('') || '<span class="sub">Add at least one enemy.</span>'}
+        <select id="lab-enemy" aria-label="Enemy">${opts}</select><button class="btn" type="button" data-act="labadd">Add enemy</button>
+        <button class="btn primary" type="button" data-act="labfight" ${lab.enemies.length ? '' : 'disabled'}>Fight with this deck</button></div>
+    </div>
+    ${workshopView(sb, { canEdit: true })}
+    <div class="grid-2">
+      <div class="panel stack"><h3>Card library · add copies</h3><div class="libgrid">${lib}</div></div>
+      <div class="panel stack"><h3>Chunk pantry · tap to put one on your clipboard</h3>${pantryHTML()}</div>
+    </div>
+    <details class="panel"><summary><h3 style="display:inline">Tools: deck JSON and loop fuzz test</h3></summary>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="stack">
+          <p class="sub">The same clause format as data/cards.json, so cards built here can be pasted into the content files (and read by a Godot build).</p>
+          <textarea id="lab-io" spellcheck="false">${esc(lab.io || exportDeck(sb))}</textarea>
+          <div class="row"><button class="btn" type="button" data-act="copyio">Copy</button><button class="btn" type="button" data-act="importio">Replace sandbox deck with this</button><button class="btn" type="button" data-act="refreshio">Reload from deck</button></div>
+        </div>
+        <div class="stack">
+          <p class="sub">Plays 500 random decks of random legal cards for 8 turns each, with random mid-fight edits, and checks that no turn passes N plays, N draws or 3N clause resolutions.</p>
+          <div class="row"><button class="btn" type="button" data-act="fuzz">Run fuzz test</button></div>
+          ${fuzzOut}
+        </div>
+      </div>
+    </details>
+  </div>`;
+}
+
+function exportDeck(run) {
+  return JSON.stringify(run.deck.map((c) => ({ id: c.base, name: c.name, pool: 'custom', clauses: c.clauses.map(G.clauseShorthand) })), null, 1);
+}
+
+// ---------- tutorial ----------
+
+function tutorialView() {
+  const tut = app.tut;
+  const step = TUTORIAL[tut.step];
+  const run = tut.run;
+  const n = TUTORIAL.length;
+  const done = tut.step === n - 1;
+  const hint = step.hint ? step.hint(run, app.ws) : {};
+  const dots = TUTORIAL.map((_, i) => `<i class="${i < tut.step ? 'done' : i === tut.step ? 'now' : ''}"></i>`).join('');
+  const nextBtn = step.check ? '' : `<button class="btn primary" type="button" data-act="tutnext">${done ? 'Finish' : 'Next'}</button>`;
+  const after = done ? `<button class="btn primary" type="button" data-act="tutexit" data-id="run">Start playing</button><button class="btn" type="button" data-act="tutexit" data-id="sandbox">Open the Sandbox</button>` : nextBtn;
+  return `<div class="stack">
+    <div class="tut panel stack">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:10px"><h3>Tutorial · step ${tut.step + 1} of ${n}</h3><div class="steps" aria-hidden="true">${dots}</div></div>
+        <div class="row">${tut.step > 0 && !done ? '<button class="btn" type="button" data-act="tutback">Back</button>' : ''}<button class="btn" type="button" data-act="tutexit" data-id="${tut.from}">${done ? 'Close' : 'Leave tutorial'}</button></div>
+      </div>
+      <h2>${esc(step.title)}</h2>
+      <div class="tut-body">${step.body}</div>
+      ${tut.flash ? `<p class="tut-ok">${esc(tut.flash)}</p>` : ''}
+      <div class="row">${after}</div>
+    </div>
+    ${workshopView(run, { canEdit: true, hint })}
+  </div>`;
+}
+
+function startTutorial() {
+  app.tut = { run: newTutorialRun(app.db), step: 0, from: app.view === 'tutorial' ? 'workshop' : app.view, flash: '' };
+  resetWs();
+  app.view = 'tutorial';
+  enterStep();
+}
+
+function enterStep() {
+  const step = TUTORIAL[app.tut.step];
+  if (step.select) app.ws.sel = step.select;
+  app.ws.tool = null;
+  app.ws.clip = null;
+  app.ws.confirmShred = false;
+}
+
+function checkTutorial() {
+  const tut = app.tut;
+  const step = TUTORIAL[tut.step];
+  if (!step.check || !step.check(tut.run, app.db)) return;
+  tut.flash = step.success ?? '';
+  tut.step++;
+  enterStep();
 }
 
 // ---------- library ----------
 
 function libraryView() {
   const db = app.db;
-  const sandbox = app.run.sandbox;
   const types = [['trigger', 'Trigger'], ['verb', 'Verb'], ['amount', 'Amount'], ['repeat', 'Repeat'], ['target', 'Target'], ['condition', 'Condition']];
   const legend = types.map(([t, l]) => `<span class="chunk t-${t}">${l}</span>`).join('');
-  const pool = (p) => db.cards.cards.filter((c) => c.pool === p).map((def) => `<div class="stack" style="gap:6px">${cardHTML(G.makeCard(def, 'lib-' + def.id))}${sandbox ? `<button class="btn" type="button" data-act="addcard" data-id="${def.id}">Add to deck</button>` : ''}</div>`).join('');
+  const pool = (p) => db.cards.cards.filter((c) => c.pool === p).map((def) => `<div class="stack" style="gap:6px">${cardHTML(G.makeCard(def, 'lib-' + def.id))}<button class="btn" type="button" data-act="addcard" data-id="${def.id}">Add to sandbox</button></div>`).join('');
   const enemyRows = Object.entries(db.enemies.enemies).map(([k, e]) => {
     const pat = e.pattern.map((it) => [it.attack != null ? `Attack ${it.attack}${it.hits > 1 ? '×' + it.hits : ''}` : '', it.block ? `Block ${it.block}` : '', it.strength ? `+${it.strength} Str` : '', it.edit ? `Edit: ${it.edit.replace('_', ' ')}` : ''].filter(Boolean).join(', ')).join(' → ');
     const d = e.drops ?? {};
@@ -357,86 +522,34 @@ function libraryView() {
       <p class="sub">Each clause reads <b>[Trigger] Verb Amount [Repeat] Target [Condition]</b>. Verb and Amount are required; an empty Target uses the verb's default. Chunks only paste into slots of their own type.</p>
       <div class="legend">${legend}<span class="chunk t-verb muted">muted</span><span class="chunk t-amount redacted">99</span> <span style="font-size:13px;color:var(--fg-2)">blacked out by an enemy</span></div>
     </div>
-    ${sandbox ? '' : '<div class="banner">Turn on Sandbox in the Lab to add any of these cards to your deck.</div>'}
+    ${tutorialPrompt()}
     <h3>Starter cards</h3><div class="cards">${pool('starter')}</div>
     <h3>Reward cards · junk with good parts</h3><div class="cards">${pool('reward')}</div>
     <div class="panel stack"><h3>Enemies</h3><div class="tblwrap"><table class="pat"><thead><tr><th>Enemy</th><th>Role</th><th>HP</th><th>Pattern (repeats)</th><th>Drops</th></tr></thead><tbody>${enemyRows}</tbody></table></div></div>
   </div>`;
 }
 
-// ---------- lab ----------
-
-function labView() {
-  const db = app.db;
-  const lab = app.lab;
-  const run = app.run;
-  const opts = Object.entries(db.enemies.enemies).map(([k, e]) => `<option value="${k}">${esc(e.name)} (${e.hp} HP)</option>`).join('');
-  const f = lab.fuzz;
-  const fuzzOut = f ? `<p class="sub">${f.ok ? 'Passed' : '<b>Failed</b>'}: ${f.turnsPlayed} turns across ${f.decks} random decks. Worst turn used ${Math.round(f.maxRatio.plays * 100)}% of the play limit, ${Math.round(f.maxRatio.draws * 100)}% of the draw limit and ${Math.round(f.maxRatio.resolutions * 100)}% of the resolution limit. Safety net hit ${f.safetyNet} times.</p>${f.failures.length ? `<pre>${esc(JSON.stringify(f.failures, null, 1))}</pre>` : ''}` : '';
-  if (lab.combat) {
-    return `<div class="stack"><div class="row" style="justify-content:space-between"><div><h3>Lab</h3><h2>Test fight</h2><p class="sub">Uses a copy of your current deck at full HP. Nothing here changes your run.</p></div><button class="btn" type="button" data-act="labclear">Leave test fight</button></div>${combatHTML(lab.combat, true)}</div>`;
-  }
-  return `<div class="grid-2">
-    <div class="panel stack">
-      <h2>Sandbox</h2>
-      <p class="sub">Edits cost no Ink and work any time, and the Library can add any card to your deck.</p>
-      <div class="row"><button class="btn${run.sandbox ? ' primary' : ''}" type="button" data-act="sandbox">${run.sandbox ? 'Sandbox is on: turn off' : 'Turn on sandbox'}</button></div>
-    </div>
-    <div class="panel stack">
-      <h2>Test fight</h2>
-      <p class="sub">Fight any enemies with your current deck.</p>
-      <div class="row">${lab.enemies.map((k, i) => `<span class="pill">${esc(db.enemies.enemies[k].name)} <button type="button" class="x" style="border:none;background:none;padding:0" data-act="labrm" data-i="${i}" aria-label="Remove">×</button></span>`).join('') || '<span class="sub">No enemies yet.</span>'}</div>
-      <div class="row"><select id="lab-enemy">${opts}</select><button class="btn" type="button" data-act="labadd">Add enemy</button><button class="btn primary" type="button" data-act="labfight" ${lab.enemies.length ? '' : 'disabled'}>Start fight</button></div>
-    </div>
-    <div class="panel stack">
-      <h2>Loop fuzz test</h2>
-      <p class="sub">Plays 500 random decks of random legal cards for 8 turns each, with random mid-fight edits, and checks that no turn passes N plays, N draws or 3N clause resolutions.</p>
-      <div class="row"><button class="btn" type="button" data-act="fuzz">Run fuzz test</button></div>
-      ${fuzzOut}
-    </div>
-    <div class="panel stack">
-      <h2>Deck JSON</h2>
-      <p class="sub">The same clause format as data/cards.json, so cards built here can be pasted into the content files (and read by a Godot build).</p>
-      <textarea id="lab-io" spellcheck="false">${esc(lab.io || exportDeck())}</textarea>
-      <div class="row"><button class="btn" type="button" data-act="copyio">Copy</button><button class="btn" type="button" data-act="importio">Replace deck with this</button><button class="btn" type="button" data-act="refreshio">Reload from deck</button></div>
-    </div>
-    <div class="panel stack">
-      <h2>New run</h2>
-      <p class="sub">Starts over with the starter deck. Current seed: <code>${run.seed}</code>.</p>
-      <div class="row"><button class="btn danger" type="button" data-act="newrun">Start a new run</button></div>
-    </div>
-  </div>`;
-}
-
-function exportDeck() {
-  return JSON.stringify(app.run.deck.map((c) => ({ id: c.base, name: c.name, pool: 'custom', clauses: c.clauses.map(G.clauseShorthand) })), null, 1);
-}
-
 // ---------- actions ----------
 
 const actions = {
-  tab: (el) => { app.view = el.dataset.id; app.ws.confirmShred = false; },
+  tab: (el) => { app.view = el.dataset.id; app.ws.confirmShred = false; app.ctool = null; },
   enter: () => { R.enterNode(app.db, app.run); app.ctool = null; },
   target: (el) => { const s = currentCombat(); if (s) s.target = +el.dataset.i; },
-  play: (el) => {
-    const s = currentCombat();
-    result(C.playCard(app.db, s, el.dataset.uid));
-  },
-  endturn: () => { const s = currentCombat(); result(C.endTurn(app.db, s)); app.ctool = null; },
+  play: (el) => { result(C.playCard(app.db, currentCombat(), el.dataset.uid)); },
+  endturn: () => { result(C.endTurn(app.db, currentCombat())); app.ctool = null; },
   ctool: (el) => { app.ctool = app.ctool === el.dataset.tool ? null : el.dataset.tool; },
   cedit: (el) => {
-    const s = currentCombat();
-    if (result(C.combatEdit(app.db, s, app.ctool, el.dataset.uid, +el.dataset.ci, el.dataset.slot))) app.ctool = null;
+    if (result(C.combatEdit(app.db, currentCombat(), app.ctool, el.dataset.uid, +el.dataset.ci, el.dataset.slot))) app.ctool = null;
   },
   finish: () => { R.finishCombat(app.db, app.run); },
   reward: (el) => { R.takeReward(app.db, app.run, el.dataset.id || null); app.ws.tool = null; },
   leavews: () => { R.leaveWorkshop(app.db, app.run); app.ws.tool = null; app.ws.clip = null; },
-  newrun: () => { app.run = R.newRun(app.db); app.lab.combat = null; app.lab.io = ''; app.view = 'run'; app.ws = { sel: null, tool: null, clip: null, confirmShred: false }; },
+  newrun: () => { app.run = R.newRun(app.db); app.view = 'run'; resetWs(); },
 
   wsel: (el) => {
     const ws = app.ws;
     if (ws.tool === 'merge' && ws.sel && el.dataset.uid !== ws.sel) {
-      if (result(E.merge(app.db, app.run, ws.sel, el.dataset.uid))) ws.tool = null;
+      if (result(E.merge(app.db, editRun(), ws.sel, el.dataset.uid))) ws.tool = null;
       return;
     }
     ws.sel = el.dataset.uid;
@@ -452,7 +565,7 @@ const actions = {
     const ws = app.ws;
     const args = [el.dataset.uid, +el.dataset.ci, el.dataset.slot];
     const db = app.db;
-    const run = app.run;
+    const run = editRun();
     switch (ws.tool) {
       case 'scissors': result(E.cut(db, run, ...args)); break;
       case 'mute': result(E.mute(db, run, ...args)); break;
@@ -470,27 +583,41 @@ const actions = {
     ws.clip = ws.clip === i ? null : i;
     if (ws.clip != null) ws.tool = 'glue';
   },
-  dropclip: (el) => { E.dropClip(app.run, +el.dataset.i); app.ws.clip = null; },
+  dropclip: (el) => { E.dropClip(editRun(), +el.dataset.i); app.ws.clip = null; },
   shredask: () => { app.ws.confirmShred = true; },
-  shred: () => { if (result(E.shred(app.db, app.run, app.ws.sel))) { app.ws.tool = null; app.ws.sel = null; } app.ws.confirmShred = false; },
+  shred: () => { if (result(E.shred(app.db, editRun(), app.ws.sel))) { app.ws.tool = null; app.ws.sel = null; } app.ws.confirmShred = false; },
 
   addcard: (el) => {
-    const c = R.addCardToDeck(app.db, app.run, G.makeCard(R.cardDef(app.db, el.dataset.id), 'tmp'));
-    toast(`Added ${c.name} to your deck.`);
+    const c = R.addCardToDeck(app.db, app.sandbox, G.makeCard(R.cardDef(app.db, el.dataset.id), 'tmp'));
+    if (app.view === 'sandbox') app.ws.sel = c.uid;
+    toast(`Added ${c.name} to the sandbox deck.`);
   },
-  sandbox: () => { app.run.sandbox = !app.run.sandbox; },
+  pantry: (el) => {
+    const sb = app.sandbox;
+    if (sb.clipboard.length >= app.db.rules.clipboardSize) { toast('Your clipboard is full. Drop a chunk first.'); return; }
+    const type = el.dataset.type;
+    let id = el.dataset.id;
+    const ch = { type, id };
+    if (type === 'amount' && id !== 'X') ch.id = +id;
+    if (type === 'condition' && id.startsWith('!')) { ch.id = id.slice(1); ch.neg = true; }
+    sb.clipboard.push(ch);
+    app.ws.clip = sb.clipboard.length - 1;
+    app.ws.tool = 'glue';
+  },
+  sbreset: () => { app.sandbox = newSandbox(); app.lab.io = ''; resetWs(); toast('Sandbox reset to one of every card.'); },
   labadd: () => { app.lab.enemies.push($('#lab-enemy').value); },
   labrm: (el) => { app.lab.enemies.splice(+el.dataset.i, 1); },
   labfight: () => {
     const db = app.db;
-    app.lab.combat = C.startCombat(db, app.run.deck, R.enemyDefs(db, app.lab.enemies), (Math.random() * 1e9) | 0, { hp: app.run.maxHp, maxHp: app.run.maxHp });
+    app.lab.combat = C.startCombat(db, app.sandbox.deck, R.enemyDefs(db, app.lab.enemies), (Math.random() * 1e9) | 0, { hp: db.rules.player.hp, maxHp: db.rules.player.hp });
     app.ctool = null;
+    app.view = 'sandbox';
   },
   labclear: () => { app.lab.combat = null; app.ctool = null; },
   fuzz: () => { app.lab.fuzz = fuzz(app.db, { decks: 500, turns: 8, seed: (Math.random() * 1e9) | 0 }); },
   copyio: () => {
     const ta = $('#lab-io');
-    navigator.clipboard?.writeText(ta.value).then(() => toast('Copied.'), () => { ta.select(); toast('Select-all done: press Ctrl+C to copy.'); });
+    navigator.clipboard?.writeText(ta.value).then(() => toast('Copied.'), () => { ta.select(); toast('Text selected: press Ctrl+C to copy.'); });
     return false;
   },
   refreshio: () => { app.lab.io = ''; },
@@ -499,9 +626,9 @@ const actions = {
     try {
       const defs = JSON.parse(text);
       if (!Array.isArray(defs)) throw new Error('Expected a list of cards.');
-      const run = app.run;
+      const sb = app.sandbox;
       const deck = defs.map((d) => {
-        const card = G.makeCard({ id: d.id ?? 'custom', name: d.name ?? 'Custom', clauses: d.clauses ?? [] }, R.newCardUid(run));
+        const card = G.makeCard({ id: d.id ?? 'custom', name: d.name ?? 'Custom', clauses: d.clauses ?? [] }, R.newCardUid(sb));
         for (const cl of card.clauses) for (const slot of G.SLOTS) {
           const ch = cl[slot];
           if (!ch) continue;
@@ -510,18 +637,27 @@ const actions = {
         }
         return card;
       });
-      run.deck = deck;
+      sb.deck = deck;
       app.lab.io = '';
-      toast(`Deck replaced: ${deck.length} cards.`);
+      toast(`Sandbox deck replaced: ${deck.length} cards.`);
     } catch (err) {
       app.lab.io = text;
       toast(`Couldn't read that JSON: ${err.message}`);
     }
   },
+
+  tutorial: () => startTutorial(),
+  tutnext: () => {
+    const tut = app.tut;
+    tut.flash = '';
+    if (tut.step < TUTORIAL.length - 1) { tut.step++; enterStep(); }
+  },
+  tutback: () => { const tut = app.tut; tut.flash = ''; tut.step = Math.max(0, tut.step - 1); tut.run = newTutorialRun(app.db, tut.step); enterStep(); },
+  tutexit: (el) => { app.view = el.dataset.id || 'workshop'; app.tut = null; resetWs(); },
 };
 
 function currentCombat() {
-  return app.view === 'lab' ? app.lab.combat : app.run.combat;
+  return app.view === 'sandbox' ? app.lab.combat : app.run.combat;
 }
 
 document.addEventListener('click', (ev) => {
@@ -531,6 +667,7 @@ document.addEventListener('click', (ev) => {
   if (!fn) return;
   ev.preventDefault();
   if (fn(el) === false) return;
+  if (app.view === 'tutorial') checkTutorial();
   render();
 });
 
@@ -539,15 +676,14 @@ document.addEventListener('mouseover', (ev) => {
   const el = ev.target.closest('[data-act="wchunk"]');
   const out = $('#preview');
   if (!out || !app.db) return;
-  const sel = app.run.deck.find((c) => c.uid === app.ws.sel);
+  const run = editRun();
+  const sel = run.deck.find((c) => c.uid === app.ws.sel);
   if (!sel) return;
   const tool = app.ws.tool;
   if (!el || !tool) { out.textContent = costLine(sel); return; }
   const args = [el.dataset.uid, +el.dataset.ci, el.dataset.slot];
   if (tool === 'glue') { if (app.ws.clip == null) return; args.push(app.ws.clip); }
-  const next = E.preview(app.db, app.run, tool, args);
-  out.textContent = costLine(sel, next);
+  out.textContent = costLine(sel, E.preview(app.db, run, tool, args));
 });
 
-const start = () => boot();
-start();
+boot();

@@ -1,12 +1,15 @@
 # Cut the Deck: web prototype
 
-A playable one-act build of the MVP plan: combat, the six Workshop tools, quick mid-fight edits, enemy text attacks with telegraphs, a card/enemy library, and a Lab with sandbox mode, test fights, the loop fuzz test and deck JSON export.
+A playable one-act build of the MVP plan: combat, the six Workshop tools, quick mid-fight edits, enemy text attacks with telegraphs, a card/enemy library, a step-by-step editing tutorial, and a Sandbox (every card, free edits, a chunk pantry, test fights, the loop fuzz test and deck JSON export).
+
+Live at https://thecosmickitchen.github.io/Cut-the-Deck/
 
 ## Run it
 
 ```
-node tools/serve.mjs      # http://localhost:5173
-node tools/test.mjs       # cost table, fuzz test, 40 autoplayed runs
+node tools/serve.mjs           # http://localhost:5173
+node tools/test.mjs            # cost table, fuzz test, 40 autoplayed runs
+node tools/test-tutorial.mjs   # every tutorial step's solution passes its check
 ```
 
 ## Layout
@@ -15,7 +18,7 @@ node tools/test.mjs       # cost table, fuzz test, 40 autoplayed runs
 |---|---|---|
 | `data/` | All content and tuning as JSON: `chunks.json` (vocabulary, inverts, weights), `cards.json`, `enemies.json`, `rules.json` | Load as-is with `JSON.parse_string(FileAccess.get_file_as_string(...))` |
 | `engine/` | The rules as pure functions over plain data. No DOM, no classes, no globals; randomness comes from a seeded RNG stored in state | Port file by file to GDScript (Dictionaries/Arrays map 1:1) |
-| `ui/` | Web front end only: renders state and turns clicks into engine calls | Replace with Godot scenes |
+| `ui/` | Web front end only: renders state and turns clicks into engine calls. `tutorial.js` holds the tutorial steps as data (card to select, what to highlight, a check, a scripted solution) | Replace with Godot scenes; the tutorial steps port as-is |
 
 Engine files, in dependency order: `rng.js` → `grammar.js` (clauses, cost, invert, text) → `edits.js` (Workshop tools) → `combat.js` (turns, enemies, invariants) → `run.js` (the act) → `fuzz.js` (phase 2 gate).
 
