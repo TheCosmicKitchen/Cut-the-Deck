@@ -1,0 +1,59 @@
+{
+  "_note": "Clause shorthand: each key is a slot, each value a chunk id from chunks.json. amount is 0-9 or \"X\". A condition starting with ! means 'unless'. Omitted slots are empty (trigger = when played, target = the verb's default). All cards past the first five rewards are placeholders.",
+  "starterDeck": [
+    { "card": "strike", "copies": 5 },
+    { "card": "defend", "copies": 4 },
+    { "card": "jab",    "copies": 1 }
+  ],
+  "cards": [
+    { "id": "strike", "name": "Strike", "pool": "starter", "clauses": [ { "verb": "deal", "amount": 6, "target": "enemy" } ] },
+    { "id": "defend", "name": "Defend", "pool": "starter", "clauses": [ { "verb": "block", "amount": 5 } ] },
+    { "id": "jab",    "name": "Jab",    "pool": "starter", "clauses": [ { "verb": "deal", "amount": 3, "repeat": "twice", "target": "enemy" } ] },
+
+    { "id": "reckless_swing", "name": "Reckless Swing", "pool": "reward", "clauses": [
+      { "verb": "deal", "amount": 9, "target": "all" },
+      { "verb": "deal", "amount": 6, "target": "self" } ] },
+    { "id": "second_wind", "name": "Second Wind", "pool": "reward", "clauses": [
+      { "trigger": "drawn", "verb": "draw", "amount": 2 },
+      { "trigger": "drawn", "verb": "discard", "amount": 2 } ] },
+    { "id": "cheap_shot", "name": "Cheap Shot", "pool": "reward", "clauses": [
+      { "verb": "deal", "amount": 4, "repeat": "thrice", "target": "random", "condition": "first_card" } ] },
+    { "id": "overcharge", "name": "Overcharge", "pool": "reward", "clauses": [
+      { "verb": "energy", "amount": 2 },
+      { "verb": "weak", "amount": 2, "target": "self" } ] },
+    { "id": "bulwark", "name": "Bulwark", "pool": "reward", "clauses": [
+      { "verb": "block", "amount": 9 },
+      { "trigger": "end_turn", "verb": "lose_block", "amount": 4 } ] },
+
+    { "id": "blood_price", "name": "Blood Price", "pool": "reward", "clauses": [
+      { "verb": "draw", "amount": 3 },
+      { "verb": "deal", "amount": 4, "target": "self" } ] },
+    { "id": "shield_bash", "name": "Shield Bash", "pool": "reward", "clauses": [
+      { "verb": "deal", "amount": 8, "target": "enemy", "condition": "has_block" },
+      { "verb": "block", "amount": 3 } ] },
+    { "id": "hex", "name": "Hex", "pool": "reward", "clauses": [
+      { "verb": "weak", "amount": 2, "target": "all" },
+      { "verb": "lose_block", "amount": 5 } ] },
+    { "id": "flurry", "name": "Flurry", "pool": "reward", "clauses": [
+      { "verb": "deal", "amount": 2, "repeat": "thrice", "target": "enemy" },
+      { "verb": "discard", "amount": 1 } ] },
+    { "id": "surge", "name": "Surge", "pool": "reward", "clauses": [
+      { "trigger": "drawn", "verb": "energy", "amount": 1 },
+      { "trigger": "drawn", "verb": "deal", "amount": 3, "target": "self" } ] },
+    { "id": "fortress", "name": "Fortress", "pool": "reward", "clauses": [
+      { "verb": "block", "amount": 8 },
+      { "verb": "block", "amount": 4, "target": "all" } ] },
+    { "id": "exploit", "name": "Exploit", "pool": "reward", "clauses": [
+      { "verb": "deal", "amount": 7, "target": "enemy", "condition": "enemy_weak" },
+      { "verb": "weak", "amount": 1, "target": "enemy" } ] },
+    { "id": "all_in", "name": "All In", "pool": "reward", "clauses": [
+      { "verb": "deal", "amount": "X", "repeat": "thrice", "target": "enemy" },
+      { "verb": "discard", "amount": 2 } ] },
+    { "id": "kind_word", "name": "Kind Word", "pool": "reward", "clauses": [
+      { "verb": "heal", "amount": 6 },
+      { "verb": "heal", "amount": 6, "target": "enemy" } ] },
+    { "id": "opening", "name": "Opening Gambit", "pool": "reward", "clauses": [
+      { "verb": "draw", "amount": 2, "condition": "first_card" },
+      { "verb": "strength", "amount": 1, "target": "all" } ] }
+  ]
+}
