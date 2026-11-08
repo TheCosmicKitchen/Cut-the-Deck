@@ -23,11 +23,15 @@ func _ready() -> void:
 
 	var mk := func(id, uid): return Grammar.make_card(RunState.card_def(db, id), uid)
 	var row1 := [["reckless_swing", "Newspaper"], ["jab", "Comics"], ["blood_price", "Pulp Horror"],
-		["all_in", "Zine"], ["bulwark", "Instruction Manual"], ["second_wind", "Almanac"]]
+		["all_in", "Zine"], ["defend", "Instruction Manual (repeats print as ×2)"], ["second_wind", "Almanac"]]
 	for i in row1.size():
 		var c: Dictionary = mk.call(row1[i][0], "p%d" % i)
 		if c.base == "blood_price":
 			c.art = "cheap_shot"
+		if c.base == "defend":
+			# mock: a manual card that repeats, to show the ×2 style
+			c.clauses[0].repeat = {"type": "repeat", "id": "twice"}
+			c.clauses.append(Grammar.parse_clause({"trigger": "end_turn", "verb": "lose_block", "amount": 2}))
 		_place(root, db, c, Vector2(84 + i * 300, 52), row1[i][1])
 
 	var cut := remix(db)

@@ -70,8 +70,8 @@ func _build() -> void:
 	_content = VBoxContainer.new()
 	_content.mouse_filter = MOUSE_FILTER_IGNORE
 	_content.add_theme_constant_override("separation", 0)
-	_content.position = Vector2(_text_x(), TEXT_Y + (10.0 if pub == Pub.COMIC else 0.0))
-	_content.size = Vector2(SZ.x - _text_x() - (24.0 if pub == Pub.COMIC else 14.0), 0)
+	_content.position = Vector2(_text_x(), TEXT_Y + (12.0 if pub == Pub.COMIC else 0.0))
+	_content.size = Vector2(SZ.x - _text_x() - (18.0 if pub == Pub.COMIC else 14.0), 0)
 	add_child(_content)
 	for i in card.clauses.size():
 		_content.add_child(_clause(card.clauses[i], i))
@@ -79,7 +79,7 @@ func _build() -> void:
 
 
 func _text_x() -> float:
-	return {Pub.MANUAL: 40.0, Pub.COMIC: 24.0}.get(pub, 14.0)
+	return {Pub.MANUAL: 40.0, Pub.COMIC: 18.0}.get(pub, 14.0)
 
 
 func cost_text() -> String:
@@ -115,6 +115,11 @@ func _picture() -> void:
 		func(tex): if is_instance_valid(pic): pic.texture = tex)
 	if pub == Pub.ZINE:
 		box.rotation = deg_to_rad(-1.2)
+	if pub == Pub.PULP:
+		box.position = Vector2(6, ART_Y - 6)
+		box.size = Vector2(SZ.x - 12, ART_H + 16)
+		pic.size = box.size
+		pm.set_shader_parameter("rect_size", box.size)
 
 
 # ---------- headers ----------
@@ -150,39 +155,59 @@ func _head_0() -> void:  # newspaper
 	add_child(cap)
 
 
-func _head_1() -> void:  # comics
-	var t := _name_label("bangers", 30, Pub.INK, true, SZ.x - 100)
-	t.position = Vector2(26, 26)
-	t.rotation = deg_to_rad(-3)
-	add_child(t)
-	var c := Pub.label(cost_text(), "bangers", 30, Color.WHITE)
-	c.add_theme_constant_override("outline_size", 7)
-	c.add_theme_color_override("font_outline_color", Pub.INK)
+func _head_1() -> void:  # comics: a cover logo, issue box, panels
+	var t: String = card.name.to_upper()
+	var fs := 42
+	while fs > 18 and Pub.font("bangers").get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > SZ.x - 110:
+		fs -= 1
+	var logo := Pub.extruded(t, "bangers", fs, Color("#ffe14d"), Color("#e3262f"), Pub.INK, 4, 6)
+	logo.position = Vector2(20, 14)
+	logo.rotation = deg_to_rad(-4)
+	add_child(logo)
+	var c := Pub.label(cost_text(), "bangers", 32, Pub.INK)
 	c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	c.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	c.position = Vector2(SZ.x - 72, 14)
-	c.size = Vector2(52, 52)
+	c.position = Vector2(SZ.x - 66, 18)
+	c.size = Vector2(46, 34)
 	add_child(c)
-	var issue := Pub.label("No. 1  ·  10¢", "bangers", 12, Pub.INK)
-	issue.position = Vector2(30, 10)
+	var ec := Pub.label("ENERGY", "bangers", 11, Pub.INK)
+	ec.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ec.position = Vector2(SZ.x - 66, 50)
+	ec.size = Vector2(46, 12)
+	add_child(ec)
+	var issue := Pub.label("No.1", "bangers", 12, Color.WHITE)
+	issue.position = Vector2(SZ.x - 59, 6)
 	add_child(issue)
+	if main_verb() == "deal":
+		var sfx := Pub.extruded("POW!", "bangers", 26, Color("#ffe14d"), Color("#e3262f"), Pub.INK, 2, 5)
+		sfx.position = Vector2(SZ.x - 92, ART_Y + 6)
+		sfx.rotation = deg_to_rad(12)
+		add_child(sfx)
 
 
-func _head_2() -> void:  # pulp horror
-	var t := _name_label("creepster", 31, Pub.ACID, false, SZ.x - 84)
-	t.add_theme_constant_override("outline_size", 6)
-	t.add_theme_color_override("font_outline_color", Color("#1b0420"))
-	t.position = Vector2(18, 22)
-	add_child(t)
-	var tag := Pub.label("a tale too terrible to tell", "playfair-400i", 11, Color("#f4d9a8"))
-	tag.position = Vector2(20, 58)
-	add_child(tag)
-	var c := Pub.label(cost_text(), "playfair-900", 22, Color("#2a0a18"))
+func _head_2() -> void:  # pulp horror: a painted magazine cover
+	var strip := Pub.label("W E I R D   P A P E R   T A L E S", "anton", 12, Color("#fff1c9"))
+	strip.position = Vector2(20, 13)
+	add_child(strip)
+	var t: String = card.name.to_upper()
+	var fs := 40
+	while fs > 18 and Pub.font("anton").get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > SZ.x - 40:
+		fs -= 1
+	var title := Pub.extruded(t, "anton", fs, Color("#ffd23c"), Color("#8a1010"), Color("#12020a"), 5, 5)
+	title.position = Vector2(18, 30)
+	title.rotation = deg_to_rad(-3.5)
+	add_child(title)
+	var c := Pub.label(cost_text() + "¢", "anton", 20, Color("#2a0a18"))
 	c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	c.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	c.position = Vector2(SZ.x - 60, 14)
-	c.size = Vector2(42, 42)
+	c.position = Vector2(SZ.x - 58, 6)
+	c.size = Vector2(44, 44)
+	c.rotation = deg_to_rad(8)
+	c.pivot_offset = c.size * 0.5
 	add_child(c)
+	var blurb := Pub.label("COMPLETE NOVEL INSIDE!", "anton", 12, Color("#12020a"))
+	blurb.position = Vector2(SZ.x - 168, SZ.y - 30)
+	blurb.rotation = deg_to_rad(-2)
+	add_child(blurb)
 
 
 func _head_3() -> void:  # zine: a ransom-note title, each letter cut from somewhere else
@@ -224,26 +249,30 @@ func _head_3() -> void:  # zine: a ransom-note title, each letter cut from somew
 	add_child(issue)
 
 
-func _head_4() -> void:  # instruction manual
-	var t := _name_label("oswald-600", 24, Pub.NAVY, true, SZ.x - 100)
-	t.position = Vector2(18, 26)
+func _head_4() -> void:  # instruction manual: flat-pack, nearly wordless
+	var t := Pub.label(flatpack_name(card.name), "hd/nunito-800", 30, Color("#111111"))
+	var fs := 30
+	while fs > 16 and Pub.font("hd/nunito-800").get_string_size(t.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > SZ.x - 100:
+		fs -= 1
+	t.add_theme_font_size_override("font_size", fs)
+	t.position = Vector2(18, 14)
 	add_child(t)
-	var model := Pub.label("MODEL %s-%02d" % [card.name.substr(0, 2).to_upper(), int(_seed()) % 90 + 10], "oswald-400", 10, Color(Pub.NAVY, 0.8))
-	model.position = Vector2(19, 58)
-	add_child(model)
-	var c := Pub.label(cost_text(), "oswald-600", 26, Pub.NAVY)
-	c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	c.position = Vector2(SZ.x - 66, 14)
-	c.size = Vector2(48, 36)
+	var c := Pub.label("%s×" % cost_text(), "hd/nunito-800", 20, Color("#111111"))
+	c.position = Vector2(SZ.x - 52, 50)
 	add_child(c)
-	var ec := Pub.label("ENERGY", "oswald-400", 8, Color(Pub.NAVY, 0.8))
-	ec.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ec.position = Vector2(SZ.x - 66, 48)
-	ec.size = Vector2(48, 12)
-	add_child(ec)
-	var bar := Pub.label("ASSEMBLY INSTRUCTIONS", "oswald-600", 9, Color.WHITE)
-	bar.position = Vector2(20, 4)
-	add_child(bar)
+	var pn := Pub.label("AA-%d-%d" % [int(_seed()) * 37 % 9000 + 1000, int(_seed()) % 9 + 1], "hd/nunito-600", 9, Color("#555555"))
+	pn.position = Vector2(19, 52)
+	add_child(pn)
+
+
+## IKEA-style product names: upper case, with a ring or dots on a vowel.
+static func flatpack_name(n: String) -> String:
+	var t := n.to_upper().replace(" ", "")
+	for pair in [["A", "Å"], ["O", "Ö"], ["U", "Ü"], ["E", "Ä"]]:
+		var i := t.find(pair[0])
+		if i > 0:
+			return t.substr(0, i) + pair[1] + t.substr(i + 1)
+	return t
 
 
 func _head_5() -> void:  # almanac
@@ -281,53 +310,38 @@ func _draw_deco() -> void:
 				for i in 4:
 					c.draw_line(Vector2(x0 + 2, SZ.y - 40 + i * 6), Vector2(x0 + (SZ.x - 32) / 3.0 - 6 - (8 if i == 3 else 0), SZ.y - 40 + i * 6), Color(Pub.INK, 0.15), 2.0)
 		Pub.COMIC:
+			# cover band behind the logo, with darker dots
+			c.draw_rect(Rect2(6, 6, SZ.x - 12, 64), Color("#2f6fe4"))
+			for y in range(10, 68, 6):
+				for x in range(10 + (y / 6 % 2) * 3, int(SZ.x) - 8, 6):
+					c.draw_circle(Vector2(x, y), 1.3, Color("#1f4fb4"))
+			# issue box
+			c.draw_rect(Rect2(SZ.x - 68, 6, 50, 60), Color.WHITE)
+			c.draw_rect(Rect2(SZ.x - 68, 6, 50, 14), Color("#e3262f"))
+			c.draw_rect(Rect2(SZ.x - 68, 6, 50, 60), Pub.INK, false, 2.5)
+			# panels with gutters
+			c.draw_rect(art.grow(2), Pub.INK, false, 3.5)
+			var tp := Rect2(12, TEXT_Y - 4, SZ.x - 24, SZ.y - TEXT_Y - 6)
+			c.draw_rect(tp, Color.WHITE)
+			c.draw_rect(tp, Pub.INK, false, 3.5)
+			# a narration caption in the panel corner
+			c.draw_rect(Rect2(tp.position + Vector2(-2, -2), Vector2(96, 18)), Color("#ffe14d"))
+			c.draw_rect(Rect2(tp.position + Vector2(-2, -2), Vector2(96, 18)), Pub.INK, false, 2.0)
+			c.draw_string(Pub.font("comic-neue-700"), tp.position + Vector2(4, 11), "MEANWHILE...", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Pub.INK)
+			# the page's outer ink border
 			var sb := StyleBoxFlat.new()
 			sb.draw_center = false
 			sb.border_color = Pub.INK
 			sb.set_border_width_all(4)
-			sb.set_corner_radius_all(6)
+			sb.set_corner_radius_all(3)
 			sb.anti_aliasing = true
 			c.draw_style_box(sb, Rect2(Vector2(4, 4), SZ - Vector2(8, 8)))
-			# title caption box
-			var cap := PackedVector2Array([Vector2(16, 20), Vector2(SZ.x - 86, 14), Vector2(SZ.x - 82, 64), Vector2(18, 68)])
-			c.draw_colored_polygon(cap, Color("#ffe14d"))
-			c.draw_polyline(cap + PackedVector2Array([cap[0]]), Pub.INK, 2.5, true)
-			# cost starburst
-			var burst := PackedVector2Array()
-			var cc := Vector2(SZ.x - 46, 40)
-			for i in 24:
-				var r := 30.0 if i % 2 == 0 else 19.0
-				var a := i * PI / 12.0
-				burst.append(cc + Vector2(cos(a), sin(a)) * r)
-			c.draw_colored_polygon(burst, Color("#ff4a3d"))
-			c.draw_polyline(burst + PackedVector2Array([burst[0]]), Pub.INK, 2.0, true)
-			# picture panel border and the speech balloon for the text
-			c.draw_rect(art.grow(1), Pub.INK, false, 3.0)
-			var bal := StyleBoxFlat.new()
-			bal.bg_color = Color.WHITE
-			bal.border_color = Pub.INK
-			bal.set_border_width_all(3)
-			bal.set_corner_radius_all(26)
-			bal.anti_aliasing = true
-			var br := Rect2(10, TEXT_Y - 6, SZ.x - 20, SZ.y - TEXT_Y - 6)
-			c.draw_style_box(bal, br)
-			var tail := PackedVector2Array([Vector2(60, br.position.y + 2), Vector2(72, ART_Y + ART_H - 18), Vector2(84, br.position.y + 2)])
-			c.draw_colored_polygon(tail, Color.WHITE)
-			c.draw_polyline(PackedVector2Array([tail[0], tail[1], tail[2]]), Pub.INK, 3.0, true)
 		Pub.PULP:
-			# the lurid cover band behind title and picture
-			var cov := Rect2(8, 8, SZ.x - 16, ART_Y + ART_H + 6)
-			var top := Color("#2b0a3d")
-			var bot := Color("#7a1030")
-			for i in 20:
-				var r := Rect2(cov.position.x, cov.position.y + cov.size.y * i / 20.0, cov.size.x, cov.size.y / 20.0 + 1)
-				c.draw_rect(r, top.lerp(bot, i / 19.0))
-			# cracks in the cover
-			for k in 3:
-				var x := 30.0 + k * 90.0
-				c.draw_polyline(PackedVector2Array([Vector2(x, 8), Vector2(x + 4, 18), Vector2(x - 2, 28), Vector2(x + 3, 40)]), Color(1, 0.9, 0.8, 0.25), 1.0, true)
-			c.draw_circle(Vector2(SZ.x - 39, 35), 22, Color("#ffd23c"), true, -1.0, true)
-			c.draw_circle(Vector2(SZ.x - 39, 35), 22, Color("#2a0a18"), false, 2.0, true)
+			c.draw_rect(Rect2(12, 10, SZ.x - 76, 20), Color("#c4161c"))
+			c.draw_circle(Vector2(SZ.x - 36, 28), 22, Color("#ffd23c"), true, -1.0, true)
+			c.draw_circle(Vector2(SZ.x - 36, 28), 22, Color("#12020a"), false, 2.0, true)
+			var rib := PackedVector2Array([Vector2(SZ.x - 176, SZ.y - 34), Vector2(SZ.x - 14, SZ.y - 40), Vector2(SZ.x - 12, SZ.y - 16), Vector2(SZ.x - 174, SZ.y - 12)])
+			c.draw_colored_polygon(rib, Color("#ffd23c"))
 		Pub.ZINE:
 			# staples down the left
 			for y in [60.0, SZ.y - 60.0]:
@@ -346,17 +360,29 @@ func _draw_deco() -> void:
 				tq.append(tp * v)
 			c.draw_colored_polygon(tq, Color(1, 1, 0.92, 0.6))
 		Pub.MANUAL:
-			c.draw_rect(Rect2(14, 2, SZ.x - 28, 16), Pub.NAVY)
-			c.draw_rect(Rect2(SZ.x - 68, 18, 52, 46), Pub.NAVY, false, 2.0)
-			c.draw_rect(art, Color(Pub.NAVY, 0.6), false, 1.2)
-			# fig. label
-			c.draw_string(Pub.font("oswald-400"), Vector2(20, ART_Y + ART_H - 6), "FIG. 1", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Pub.NAVY)
-			# warning triangle at the foot
-			var w := Vector2(SZ.x - 30, SZ.y - 26)
-			var tri := PackedVector2Array([w + Vector2(0, -10), w + Vector2(10, 7), w + Vector2(-10, 7)])
-			c.draw_colored_polygon(tri, Color("#ffd23c"))
-			c.draw_polyline(tri + PackedVector2Array([tri[0]]), Pub.NAVY, 1.5, true)
-			c.draw_string(Pub.font("oswald-600"), w + Vector2(-2.5, 5), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Pub.NAVY)
+			# the hex key that comes in every box, beside the energy count
+			var hk := Vector2(SZ.x - 62, 30)
+			c.draw_polyline(PackedVector2Array([hk + Vector2(0, 20), hk, hk + Vector2(34, -6)]), Color("#111111"), 3.0, true)
+			c.draw_line(Vector2(16, 70), Vector2(SZ.x - 16, 70), Color("#111111"), 1.0)
+			# a little worried assembler in the corner of the picture
+			var g := Vector2(SZ.x - 34, ART_Y + ART_H - 8)
+			c.draw_circle(g + Vector2(0, -30), 5, Color.WHITE, true, -1.0, true)
+			c.draw_circle(g + Vector2(0, -30), 5, Color("#111111"), false, 1.4, true)
+			c.draw_line(g + Vector2(0, -25), g + Vector2(0, -10), Color("#111111"), 1.4, true)
+			c.draw_line(g + Vector2(0, -10), g + Vector2(-5, 0), Color("#111111"), 1.4, true)
+			c.draw_line(g + Vector2(0, -10), g + Vector2(5, 0), Color("#111111"), 1.4, true)
+			c.draw_line(g + Vector2(0, -21), g + Vector2(-7, -15), Color("#111111"), 1.4, true)
+			c.draw_line(g + Vector2(0, -21), g + Vector2(7, -26), Color("#111111"), 1.4, true)
+			c.draw_string(Pub.font("hd/nunito-800"), g + Vector2(8, -34), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#111111"))
+			# parts strip at the foot: one box per clause, "1×" each
+			var px := 18.0
+			for i in card.clauses.size():
+				var r := Rect2(px, SZ.y - 34, 46, 22)
+				c.draw_rect(r, Color("#111111"), false, 1.0)
+				c.draw_circle(r.position + Vector2(12, 11), 5, Color("#111111"), false, 1.2, true)
+				c.draw_line(r.position + Vector2(9, 11), r.position + Vector2(15, 11), Color("#111111"), 1.2)
+				c.draw_string(Pub.font("hd/nunito-800"), r.position + Vector2(22, 16), "1×", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#111111"))
+				px += 52
 		Pub.ALMANAC:
 			c.draw_rect(Rect2(10, 10, SZ.x - 20, SZ.y - 20), Color(Pub.BROWN, 0.8), false, 1.6)
 			c.draw_rect(Rect2(14, 14, SZ.x - 28, SZ.y - 28), Color(Pub.BROWN, 0.6), false, 0.8)
@@ -424,8 +450,7 @@ func _clause(clause: Dictionary, ci: int) -> Control:
 		badge.mouse_filter = MOUSE_FILTER_IGNORE
 		var n := ci + 1
 		badge.draw.connect(func():
-			badge.draw_circle(Vector2(-12, 21), 10, Pub.NAVY, true, -1.0, true)
-			badge.draw_string(Pub.font("oswald-600"), Vector2(-16, 26.5), str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE))
+			badge.draw_string(Pub.font("hd/nunito-800"), Vector2(-26, 32), str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("#111111")))
 		wrap.add_child(badge)
 		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		wrap.add_child(box)
@@ -452,9 +477,10 @@ func _fit() -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(_content):
 		return
-	var room := SZ.y - TEXT_Y - (48.0 if pub == Pub.NEWS else 16.0)
+	var foot: float = {Pub.NEWS: 48.0, Pub.PULP: 44.0, Pub.COMIC: 28.0, Pub.MANUAL: 40.0}.get(pub, 16.0)
+	var room: float = SZ.y - TEXT_Y - foot
 	var h: float = _content.get_combined_minimum_size().y
 	if h > room:
-		var k := room / h
+		var k: float = room / h
 		_content.scale = Vector2(k, k)
 		_content.size.x = (SZ.x - _text_x() - 14) / k

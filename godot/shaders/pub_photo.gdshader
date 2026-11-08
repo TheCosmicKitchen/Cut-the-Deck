@@ -35,6 +35,7 @@ void fragment() {
 	float l = luma(c);
 	vec2 p = UV * rect_size;
 	vec3 o;
+	float alpha = 1.0;
 	if (pub == 0) {
 		// halftone: dot size from darkness on a 45 degree grid
 		float cellsz = 3.2;
@@ -44,21 +45,33 @@ void fragment() {
 		float ink = 1.0 - smoothstep(rad - 0.08, rad + 0.08, length(f));
 		o = mix(vec3(0.9, 0.88, 0.82), vec3(0.1, 0.1, 0.12), ink);
 	} else if (pub == 1) {
-		vec3 q = floor(c * 4.0 + 0.5) / 4.0;
-		q = mix(q, q * vec3(1.05, 1.0, 0.95), 0.5);
+		vec3 q = floor(c * 3.0 + 0.5) / 3.0;
+		q = clamp(mix(vec3(luma(q)), q, 1.5), 0.0, 1.0);
 		vec2 f = fract(p / 4.0) - 0.5;
 		float shade = step(l, 0.62) * (1.0 - smoothstep(0.18, 0.24, length(f)));
 		q = mix(q, q * 0.72, shade);
-		float e = edge(TEXTURE, UV, px * 1.5);
-		o = mix(q, vec3(0.05), smoothstep(0.25, 0.5, e));
+		float e = max(edge(TEXTURE, UV, px * 2.0), edge(TEXTURE, UV, px));
+		o = mix(q, vec3(0.05), smoothstep(0.18, 0.35, e));
 	} else if (pub == 2) {
-		vec3 dark = vec3(0.18, 0.04, 0.24);
-		vec3 lite = vec3(0.98, 0.78, 0.25);
-		o = mix(dark, lite, smoothstep(0.25, 0.85, l));
-		o = mix(o, vec3(0.75, 0.1, 0.18), smoothstep(0.35, 0.0, abs(l - 0.5)) * 0.55);
-		o += (hash(p + 0.5) - 0.5) * 0.12;
+		// painted: smear the picture along brush strokes, then map it to lurid paint
+		vec2 smear = vec2(hash(floor(p / vec2(6.0, 2.0))) - 0.5, hash(floor(p / vec2(2.0, 6.0)) + 3.1) - 0.5) * px * 3.0;
+		float ls = luma(texture(TEXTURE, UV + smear).rgb);
+		vec3 sat = texture(TEXTURE, UV + smear).rgb;
+		vec3 g0 = vec3(0.12, 0.03, 0.2);
+		vec3 g1 = vec3(0.62, 0.08, 0.2);
+		vec3 g2 = vec3(0.98, 0.45, 0.12);
+		vec3 g3 = vec3(1.0, 0.9, 0.45);
+		float k = smoothstep(0.15, 0.95, ls);
+		o = k < 0.33 ? mix(g0, g1, k / 0.33) : (k < 0.66 ? mix(g1, g2, (k - 0.33) / 0.33) : mix(g2, g3, (k - 0.66) / 0.34));
+		o = mix(o, sat * vec3(1.15, 0.9, 0.8), 0.28);
+		// rim light on edges
+		float e = edge(TEXTURE, UV, px * 1.5);
+		o = mix(o, vec3(1.0, 0.85, 0.4), smoothstep(0.25, 0.6, e) * 0.55);
+		o += (hash(floor(p * 0.5)) - 0.5) * 0.06;
 		vec2 v = UV - 0.5;
-		o *= 1.0 - dot(v, v) * 1.6;
+		float vig = 1.0 - smoothstep(0.18, 0.5, length(v * vec2(1.0, 1.6)));
+		o *= mix(0.55, 1.05, vig);
+		alpha = smoothstep(0.0, 0.12, min(min(UV.x, 1.0 - UV.x), min(UV.y, 1.0 - UV.y)) * 3.0);
 	} else if (pub == 3) {
 		float t = l + (hash(floor(p)) - 0.5) * 0.18;
 		float ink = 1.0 - step(0.62, t);
@@ -83,5 +96,5 @@ void fragment() {
 		ink = max(ink, smoothstep(0.2, 0.4, e));
 		o = mix(vec3(0.94, 0.87, 0.71), vec3(0.3, 0.18, 0.1), ink);
 	}
-	COLOR = vec4(o, 1.0);
+	COLOR = vec4(o, alpha);
 }

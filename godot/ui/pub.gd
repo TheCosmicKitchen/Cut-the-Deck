@@ -59,8 +59,8 @@ static func font(name: String) -> Font:
 static func body(pub: int) -> Array:
 	match pub:
 		NEWS: return ["playfair-700", 18, false]
-		COMIC: return ["comic-neue-700", 19, true]
-		PULP: return ["cormorant-700", 21, false]
+		COMIC: return ["comic-neue-700", 18, true]
+		PULP: return ["anton", 22, true]
 		ZINE: return ["special-elite", 17, false]
 		MANUAL: return ["hd/nunito-800", 16, false]
 	return ["fell", 20, false]
@@ -75,12 +75,27 @@ static func ink(pub: int, slot: String) -> Color:
 		ZINE:
 			return Color("#141414")
 		PULP:
-			return c.darkened(0.35)
+			return c.lightened(0.5) if slot != "verb" else Color("#ffd23c")
+		COMIC:
+			return INK
 		ALMANAC:
 			return c.lerp(BROWN, 0.45)
 		MANUAL:
-			return c.darkened(0.1)
+			return Color("#111111")
 	return c
+
+
+## Big display lettering with a stacked 3D extrusion and an ink outline.
+static func extruded(text: String, fname: String, size: int, fill: Color, side: Color, outline: Color, depth := 5, ol := 6) -> Control:
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for i in range(depth, -1, -1):
+		var l := label(text, fname, size, fill if i == 0 else side)
+		l.add_theme_constant_override("outline_size", ol)
+		l.add_theme_color_override("font_outline_color", outline)
+		l.position = Vector2(i, i) * 1.0
+		root.add_child(l)
+	return root
 
 
 static func label(text: String, fname: String, size: int, col: Color) -> Label:

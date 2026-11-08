@@ -48,6 +48,9 @@ func _build() -> void:
 	var fname: String = st[0]
 	var fs: int = st[1]
 	var shown := text.to_upper() if st[2] else text
+	if src == Pub.MANUAL and slot == "repeat":
+		# the manual counts things: twice is ×2
+		shown = {"once": "×1", "twice": "×2", "thrice": "×3"}.get(chunk.id if chunk else "", shown)
 	if look == "hole":
 		# the hole is sized like the word that was there, in this card's own type
 		st = Pub.body(dest)
@@ -107,7 +110,17 @@ func _build() -> void:
 	deco.draw.connect(_draw_under.bind(deco, inner))
 	_body.add_child(deco)
 
+	if src == Pub.PULP:
+		# lurid cover lettering: a hard drop shadow under an inked outline
+		var sh := Pub.label(shown, fname, fs, Color("#12020a"))
+		sh.add_theme_constant_override("outline_size", 5)
+		sh.add_theme_color_override("font_outline_color", Color("#12020a"))
+		sh.position = Vector2(M + PAD.x + 2, M + PAD.y + 1)
+		_body.add_child(sh)
 	var l := Pub.label(shown, fname, fs, Pub.ink(src, slot))
+	if src == Pub.PULP:
+		l.add_theme_constant_override("outline_size", 4)
+		l.add_theme_color_override("font_outline_color", Color("#3a0814"))
 	l.position = Vector2(M + PAD.x, M + PAD.y - 1)
 	l.size = Vector2(tw + 1, th)
 	if lines > 1:
@@ -151,14 +164,18 @@ func _draw_under(c: Control, inner: Vector2) -> void:
 		Pub.PULP:
 			c.draw_line(Vector2(r.position.x + 3, r.end.y - 3), Vector2(r.end.x - 3, r.end.y - 4), Color(col, 0.5), 1.4, true)
 		Pub.COMIC:
-			# comic lettering sits in a little white balloon edge
+			# a narration caption box: pastel fill by type, hard ink border
 			var sb2 := StyleBoxFlat.new()
-			sb2.bg_color = Color(1, 1, 1, 0.0)
-			sb2.border_color = Color(col, 0.9)
+			sb2.bg_color = col.lightened(0.62)
+			sb2.border_color = Pub.INK
 			sb2.set_border_width_all(2)
-			sb2.set_corner_radius_all(int(inner.y * 0.5))
+			sb2.set_corner_radius_all(2)
+			sb2.shadow_color = Pub.INK
+			sb2.shadow_size = 0
+			sb2.shadow_offset = Vector2(2, 2)
 			sb2.anti_aliasing = true
-			c.draw_style_box(sb2, r.grow(-1))
+			c.draw_rect(Rect2(r.position + Vector2(3, 3), r.size - Vector2(2, 2)), Pub.INK)
+			c.draw_style_box(sb2, Rect2(r.position + Vector2(1, 1), r.size - Vector2(2, 2)))
 
 
 ## How the destination card's publication sticks a slip on.
