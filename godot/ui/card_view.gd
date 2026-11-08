@@ -21,10 +21,7 @@ var _frame: Control
 var _frame_mat: ShaderMaterial
 var _gem_mat: ShaderMaterial
 var _content: VBoxContainer
-var _art: Control
-var _art_mat: ShaderMaterial
-var _art_sprite: TextureRect
-var _stars: Array[TextureRect] = []
+var _art: Panel
 var _foot: HBoxContainer
 var _selected := false
 var _scroll := 0.0
@@ -59,9 +56,9 @@ func main_verb() -> String:
 	return "ui"
 
 
-## The card's picture. Stored as card.art so it can be swapped; defaults to the main verb's.
-func art_name() -> String:
-	return card.get("art", Px.verb_sprite(theme_name))
+## Height of the picture box. Fixed per kind so every card lines up.
+func art_height() -> float:
+	return 128.0 if kind == "big" else 112.0
 
 
 func _build() -> void:
@@ -133,42 +130,45 @@ func _build() -> void:
 		add_child(line)
 		return
 
-	if kind == "hand":
-		_art = Control.new()
-		_art.mouse_filter = MOUSE_FILTER_IGNORE
-		_art.clip_contents = true
-		add_child(_art)
-		var backdrop := ColorRect.new()
-		backdrop.mouse_filter = MOUSE_FILTER_IGNORE
-		backdrop.set_anchors_preset(PRESET_FULL_RECT)
-		_art_mat = ShaderMaterial.new()
-		_art_mat.shader = INSET
-		var t: Array = Look.THEME.get(theme_name, Look.THEME.ui)
-		_art_mat.set_shader_parameter("bg_a", t[2])
-		_art_mat.set_shader_parameter("bg_b", t[1])
-		_art_mat.set_shader_parameter("shade", t[0].darkened(0.25))
-		backdrop.material = _art_mat
-		_art.add_child(backdrop)
-		_art_sprite = TextureRect.new()
-		_art_sprite.texture = Px.sprite(art_name(), t[0])
-		_art_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_art_sprite.stretch_mode = TextureRect.STRETCH_SCALE
-		_art_sprite.mouse_filter = MOUSE_FILTER_IGNORE
-		_art.add_child(_art_sprite)
-		for i in 2:
-			var st := TextureRect.new()
-			st.texture = Px.sprite("star")
-			st.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			st.stretch_mode = TextureRect.STRETCH_SCALE
-			st.size = Vector2(18, 18)
-			st.mouse_filter = MOUSE_FILTER_IGNORE
-			_art.add_child(st)
-			_stars.append(st)
+	# the picture: same size on every card, a rounded window sunk into it
+	var art_h := art_height()
+	_art = Panel.new()
+	_art.mouse_filter = MOUSE_FILTER_IGNORE
+	_art.position = Vector2(18, 58)
+	_art.size = Vector2(sz.x - 36, art_h)
+	_art.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
+	var mask := StyleBoxFlat.new()
+	mask.set_corner_radius_all(10)
+	mask.anti_aliasing = true
+	_art.add_theme_stylebox_override("panel", mask)
+	add_child(_art)
+	var pic := TextureRect.new()
+	pic.mouse_filter = MOUSE_FILTER_IGNORE
+	pic.size = _art.size
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_SCALE
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_art.add_child(pic)
+	var rim := Panel.new()
+	rim.mouse_filter = MOUSE_FILTER_IGNORE
+	rim.position = _art.position
+	rim.size = _art.size
+	var rs := StyleBoxFlat.new()
+	rs.draw_center = false
+	rs.set_corner_radius_all(10)
+	rs.set_border_width_all(2)
+	rs.border_color = Color(Look.THEME.get(theme_name, Look.THEME.ui)[0].darkened(0.35), 0.6)
+	rs.anti_aliasing = true
+	rim.add_theme_stylebox_override("panel", rs)
+	add_child(rim)
+	Illo.texture(get_tree() if is_inside_tree() else Engine.get_main_loop(), Illo.scene_for(card, theme_name),
+		Look.THEME.get(theme_name, Look.THEME.ui), _art.size,
+		func(tex): if is_instance_valid(pic): pic.texture = tex)
 
 	_content = VBoxContainer.new()
 	_content.mouse_filter = MOUSE_FILTER_IGNORE
 	_content.add_theme_constant_override("separation", 4)
-	_content.position = Vector2(18, 56)
+	_content.position = Vector2(18, 58 + art_h + 6)
 	_content.size = Vector2(sz.x - 36, 0)
 	add_child(_content)
 	var tele: Array = opts.get("tele", [])
@@ -281,37 +281,18 @@ func _fit() -> void:
 		return
 	var sz := size
 	var text_h: float = _content.get_combined_minimum_size().y
-	var foot := 40.0 if _foot else 18.0
+	var foot := 40.0 if _foot else 16.0
+	var top: float = _content.position.y
 	if kind == "big":
-		var h: float = max(card_size().y, 60.0 + text_h + foot)
-		_resize(Vector2(sz.x, h))
+		_resize(Vector2(sz.x, max(card_size().y, top + text_h + foot)))
 		sz = size
-		_content.position.y = 58
 	else:
-		var room: float = sz.y - foot - 62.0
+		# the box never moves; long text shrinks to fit under it
+		var room: float = sz.y - foot - top
 		if text_h > room:
 			var k: float = room / text_h
 			_content.scale = Vector2(k, k)
 			_content.size.x = (sz.x - 36) / k
-			text_h = room
-		var y: float = sz.y - foot - text_h
-		var ah: float = y - 60.0 - 6.0
-		if ah < 40.0:
-			# no room for a picture: text starts under the name instead
-			y = 56.0
-		_content.position.y = y
-		if _art:
-			_art.visible = ah >= 40.0
-			_art.position = Vector2(18, 58)
-			_art.size = Vector2(sz.x - 36, ah)
-			_art_mat.set_shader_parameter("rect_size", _art.size)
-			var tex_sz := _art_sprite.texture.get_size()
-			var sc: float = clamp(floor((ah - 16.0) / tex_sz.y), 2.0, 6.0)
-			_art_sprite.size = tex_sz * sc
-			_art_sprite.position = Vector2(floor((_art.size.x - _art_sprite.size.x) * 0.5), floor(ah - 12.0 - _art_sprite.size.y))
-			if _stars.size() == 2:
-				_stars[0].position = Vector2(12, 10)
-				_stars[1].position = Vector2(_art.size.x - 30, floor(ah * 0.45))
 	if _foot:
 		_foot.position = Vector2(18, sz.y - 34)
 

@@ -21,29 +21,17 @@ func _ready() -> void:
 	bg.material = bm
 	root.add_child(bg)
 
-	var rows := [["rough", "Glued slips", "rough hand-cut paper,\\nwet glue shine"], ["label", "Taped labels", "cut paper held\\nwith a strip of tape"]]
-	var captions := ["Untouched card:\nprinted text, cut guides,\n'if' arrow", "Strike after its\nTarget was cut out", "Strike with 'to ALL enemies'\n(from Reckless Swing) and\n'When drawn' (from Second Wind)", "Reckless Swing: target\ncut, drawback muted", "Jab Defend: a 9 from Bulwark,\n'if' from Opening Gambit,\ntypo, black-out, enemy edit"]
-	for r in rows.size():
-		var y := 70 + r * 500
-		var head := Look.label(rows[r][1], "title", 34, Look.INK)
-		head.position = Vector2(40, y + 20)
-		root.add_child(head)
-		var sub := Look.label(rows[r][2].replace("\\n", "\n"), "body", 20, Look.INK2)
-		sub.position = Vector2(42, y + 70)
-		root.add_child(sub)
-		var cards := _cards(db)
-		for i in cards.size():
-			var c: Dictionary = cards[i]
-			var o: Dictionary = c.opts.duplicate()
-			o.slip_style = rows[r][0]
-			var cv := CardView.new().setup(db, c.card, "hand", o)
-			cv.position = Vector2(300 + i * 318, y)
-			root.add_child(cv)
-			var cap := Look.label(captions[i], "body", 17, Look.INK2)
-			cap.position = Vector2(300 + i * 318, y + 372)
-			root.add_child(cap)
+	var head := Look.label("Cut-paper scenes, one per card, starring Pip", "title", 30, Look.INK)
+	head.position = Vector2(60, 14)
+	root.add_child(head)
+	var ids := ["strike", "defend", "jab", "reckless_swing", "second_wind", "cheap_shot", "bulwark", "opening"]
+	for i in ids.size():
+		var card := Grammar.make_card(RunState.card_def(db, ids[i]), "m%d" % i)
+		var cv := CardView.new().setup(db, card, "hand", {})
+		cv.position = Vector2(150 + (i % 4) * 430, 66 + (i / 4) * 500)
+		root.add_child(cv)
 
-	for i in 10:
+	for i in 20:
 		await get_tree().process_frame
 	vp.get_texture().get_image().save_png(OS.get_cmdline_user_args()[0])
 	get_tree().quit()
@@ -85,3 +73,31 @@ func _cards(db: Dictionary) -> Array:
 		{"card": Edits.find_card(run, "r"), "opts": {}},
 		{"card": j, "opts": {"tele": [{"enemy": 0, "ci": 1, "slot": "verb"}], "enemy_names": {0: "Inverter"}}},
 	]
+
+
+## Strike, edited one step at a time with the real tools. Each entry is a snapshot.
+static func sequence(db: Dictionary) -> Array:
+	var mk := func(id, uid): return Grammar.make_card(RunState.card_def(db, id), uid)
+	var run := {"deck": [mk.call("strike", "s"), mk.call("reckless_swing", "r"), mk.call("flurry", "f"),
+		mk.call("bulwark", "b"), mk.call("exploit", "e"), mk.call("defend", "d")],
+		"ink": 99, "clipboard": [], "freeUses": {}, "sandbox": true}
+	var last := func(): return run.clipboard.size() - 1
+	var out := []
+	var snap := func(cap): out.append({"card": Edits.find_card(run, "s").duplicate(true), "caption": cap})
+	snap.call("Strike as printed")
+	Edits.cut(db, run, "s", 0, "target")
+	Edits.cut(db, run, "r", 0, "target")
+	Edits.glue(db, run, "s", 0, "target", last.call())
+	snap.call("+ 'to ALL enemies'\n(Reckless Swing)")
+	Edits.cut(db, run, "f", 0, "repeat")
+	Edits.glue(db, run, "s", 0, "repeat", last.call())
+	snap.call("+ 'three times'\n(Flurry)")
+	Edits.cut(db, run, "b", 0, "amount")
+	Edits.glue(db, run, "s", 0, "amount", last.call())
+	snap.call("6 swapped for a 9\n(Bulwark)")
+	Edits.cut(db, run, "e", 0, "condition")
+	Edits.glue(db, run, "s", 0, "condition", last.call())
+	snap.call("+ 'if an enemy is Weak'\n(Exploit)")
+	Edits.merge(db, run, "s", "d")
+	snap.call("merged with Defend")
+	return out
