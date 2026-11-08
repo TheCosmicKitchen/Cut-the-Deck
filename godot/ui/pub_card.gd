@@ -17,9 +17,15 @@ var _content: VBoxContainer
 var _deco: Control
 
 
-func setup(p_db: Dictionary, p_card: Dictionary) -> PubCard:
+var opts := {}
+
+
+## opts.collage: [[scene, pub], ...] makes the picture a collage of torn strips
+## from several publications' pictures.
+func setup(p_db: Dictionary, p_card: Dictionary, p_opts := {}) -> PubCard:
 	db = p_db
 	card = p_card
+	opts = p_opts
 	pub = Pub.of_card(card)
 	size = SZ
 	custom_minimum_size = SZ
@@ -111,8 +117,14 @@ func _picture() -> void:
 	pic.material = pm
 	box.add_child(pic)
 	var verb := main_verb()
-	Illo.texture(Engine.get_main_loop(), Illo.scene_for(card, verb), Look.THEME.get(verb, Look.THEME.ui), box.size,
-		func(tex): if is_instance_valid(pic): pic.texture = tex)
+	if opts.has("collage"):
+		pic.queue_free()
+		_collage(box, opts.collage)
+		return
+	var art_style: String = ["photo", "ink", "silhouette", "xerox", "line", "woodcut"][pub]
+	var scene: String = card.get("art", Illo.PUB_SCENES.get(card.get("base", ""), Illo.scene_for(card, verb)))
+	Illo.texture(Engine.get_main_loop(), scene, Look.THEME.get(verb, Look.THEME.ui), box.size,
+		func(tex): if is_instance_valid(pic): pic.texture = tex, art_style)
 	if pub == Pub.ZINE:
 		box.rotation = deg_to_rad(-1.2)
 	if pub == Pub.PULP:
@@ -120,6 +132,51 @@ func _picture() -> void:
 		box.size = Vector2(SZ.x - 12, ART_H + 16)
 		pic.size = box.size
 		pm.set_shader_parameter("rect_size", box.size)
+
+
+## Torn vertical strips, each from a different publication's picture.
+func _collage(box: Control, parts: Array) -> void:
+	var n := parts.size()
+	var w := box.size.x / n
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var cuts := [-6.0]
+	for i in range(1, n):
+		cuts.append(w * i + rng.randf_range(-6, 6))
+	cuts.append(box.size.x + 6)
+	for i in n:
+		var scene: String = parts[i][0]
+		var p: int = parts[i][1]
+		var poly := Polygon2D.new()
+		var pts := PackedVector2Array()
+		var steps := 10
+		# left edge down, right edge up, both torn and slanted
+		for k in steps + 1:
+			var y := -4.0 + (box.size.y + 8) * k / steps
+			pts.append(Vector2(cuts[i] + rng.randf_range(-2.0, 2.0) + (y - box.size.y * 0.5) * 0.06, y))
+		for k in range(steps, -1, -1):
+			var y := -4.0 + (box.size.y + 8) * k / steps
+			pts.append(Vector2(cuts[i + 1] + rng.randf_range(-2.0, 2.0) + (y - box.size.y * 0.5) * 0.06, y))
+		var shadow := Polygon2D.new()
+		shadow.polygon = pts
+		shadow.color = Color(0, 0, 0, 0.35)
+		shadow.position = Vector2(2, 2)
+		box.add_child(shadow)
+		poly.polygon = pts
+		var uv := PackedVector2Array()
+		for q in pts:
+			uv.append(q * 2.0)
+		poly.uv = uv
+		var pm := ShaderMaterial.new()
+		pm.shader = PHOTO
+		pm.set_shader_parameter("pub", p)
+		pm.set_shader_parameter("rect_size", box.size)
+		pm.set_shader_parameter("accent", Pub.RISO)
+		poly.material = pm
+		box.add_child(poly)
+		var st: String = ["photo", "ink", "silhouette", "xerox", "line", "woodcut"][p]
+		Illo.texture(Engine.get_main_loop(), scene, Look.THEME.deal, box.size,
+			func(tex): if is_instance_valid(poly): poly.texture = tex, st)
 
 
 # ---------- headers ----------
@@ -150,7 +207,7 @@ func _head_0() -> void:  # newspaper
 	var head := _name_label("playfair-900", 25, Pub.INK, true, SZ.x - 32)
 	head.position = Vector2(16, 47)
 	add_child(head)
-	var cap := Pub.label("Pip, pictured yesterday afternoon.", "playfair-400i", 10, Color(Pub.INK, 0.75))
+	var cap := Pub.label("Staff photographer, at the ballpark.", "playfair-400i", 10, Color(Pub.INK, 0.75))
 	cap.position = Vector2(16, ART_Y + ART_H + 1)
 	add_child(cap)
 
