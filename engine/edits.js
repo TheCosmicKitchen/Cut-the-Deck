@@ -46,7 +46,7 @@ export function cut(db, run, uid, ci, slot) {
   pay(db, run, 'scissors');
   card.clauses[ci][slot] = null;
   (card.clauses[ci].holes ??= []).push(slot); // the card shows a hole where it was
-  run.clipboard.push(stripChunk(ch));
+  run.clipboard.push(stripChunk(ch, card.base));
   tidy(card);
   return { ok: true };
 }
@@ -68,7 +68,7 @@ export function glue(db, run, uid, ci, slot, clipIdx) {
   card.clauses[ci][slot] = ch;
   if (card.clauses[ci].holes) card.clauses[ci].holes = card.clauses[ci].holes.filter((s) => s !== slot);
   run.clipboard.splice(clipIdx, 1);
-  if (old) run.clipboard.push(stripChunk(old));
+  if (old) run.clipboard.push(stripChunk(old, card.base));
   return { ok: true };
 }
 
@@ -121,7 +121,7 @@ export function shred(db, run, uid) {
   for (const clause of card.clauses) {
     for (const slot of SLOTS) {
       if (!clause[slot]) continue;
-      if (run.clipboard.length < db.rules.clipboardSize) run.clipboard.push(stripChunk(clause[slot]));
+      if (run.clipboard.length < db.rules.clipboardSize) run.clipboard.push(stripChunk(clause[slot], card.base));
       else lost++;
     }
   }

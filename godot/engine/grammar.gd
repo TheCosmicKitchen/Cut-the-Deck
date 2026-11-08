@@ -58,10 +58,15 @@ static func clone_card(card: Dictionary) -> Dictionary:
 	return card.duplicate(true)
 
 
-static func strip_chunk(ch: Dictionary) -> Dictionary:
+## from_card: the card it is being cut from. A slip keeps the card it was first cut
+## from, so its paper still shows where it came from.
+static func strip_chunk(ch: Dictionary, from_card := "") -> Dictionary:
 	var out := {"type": ch.type, "id": ch.id}
 	if ch.get("neg", false):
 		out.neg = true
+	var from: String = ch.get("from", from_card)
+	if from != "":
+		out.from = from
 	return out
 
 

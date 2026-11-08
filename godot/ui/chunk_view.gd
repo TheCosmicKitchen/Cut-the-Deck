@@ -87,7 +87,7 @@ func _build() -> void:
 	for l in lines:
 		tw = max(tw, f.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
 	var line_h := f.get_height(fs) - 3.0
-	var extra_x := 6.0 if look == "slip" else 0.0   # room for the colour stripe
+	var extra_x := 2.0 if look == "slip" else 0.0
 	var body := Vector2(ceil(tw) + PAD.x * 2 + extra_x, ceil(line_h * lines.size()) + PAD.y * 2)
 	if look == "hole":
 		body.y = max(body.y, f.get_height(int(font_size)) + PAD.y * 2 - 3)
@@ -118,6 +118,8 @@ func _build() -> void:
 	_mat.set_shader_parameter("mode", {"printed": 0, "slip": 1, "hole": 2}[look])
 	_mat.set_shader_parameter("tape", look == "slip" and slip_style == "label")
 	_mat.set_shader_parameter("glue", slip_style == "rough")
+	if look == "slip":
+		_set_source(sd)
 	bg.material = _mat
 	_holder.add_child(bg)
 
@@ -158,6 +160,29 @@ func _build() -> void:
 		if chunk.get("muted", false) and not chunk.get("redacted", false):
 			_label.modulate = Color(1, 1, 1, 0.5)
 	refresh()
+
+
+## Slips show the paper of the card they were cut from (chunk.from = that card's id).
+func _set_source(sd: float) -> void:
+	var from: String = chunk.get("from", "")
+	var db: Dictionary = Game.db if Game and not Game.db.is_empty() else {}
+	var def = RunState.card_def(db, from) if from != "" and not db.is_empty() else null
+	if def == null:
+		_mat.set_shader_parameter("has_src", false)
+		return
+	var verb := "ui"
+	for cl in def.clauses:
+		if cl.has("verb") and not cl.has("trigger"):
+			verb = cl.verb
+			break
+	if verb == "ui" and not def.clauses.is_empty() and def.clauses[0].has("verb"):
+		verb = def.clauses[0].verb
+	var t: Array = Look.THEME.get(verb, Look.THEME.ui)
+	_mat.set_shader_parameter("has_src", true)
+	_mat.set_shader_parameter("src1", t[0])
+	_mat.set_shader_parameter("src2", t[1])
+	_mat.set_shader_parameter("src3", t[2])
+	_mat.set_shader_parameter("sliver", int(sd) % 4)
 
 
 func refresh() -> void:

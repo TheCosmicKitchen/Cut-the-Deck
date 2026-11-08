@@ -17,6 +17,12 @@ uniform vec4 paper : source_color = vec4(1.0, 0.98, 0.94, 1.0);
 uniform vec4 tint : source_color = vec4(0.94, 0.29, 0.42, 1.0);
 uniform vec4 hole_col : source_color = vec4(0.98, 0.72, 0.84, 1.0);
 uniform bool tape = false;
+// the card a slip was cut from: its stripe colours [s1, s2, s3] and art ground
+uniform vec4 src1 : source_color = vec4(0.94, 0.29, 0.42, 1.0);
+uniform vec4 src2 : source_color = vec4(1.0, 0.82, 0.72, 1.0);
+uniform vec4 src3 : source_color = vec4(1.0, 0.97, 0.93, 1.0);
+uniform bool has_src = false;
+uniform int sliver = 0;        // which cut edge shows a bit of the source card's border: 0 none, 1 top, 2 bottom, 3 left
 uniform bool glue = true;
 uniform float hover = 0.0;
 uniform bool telegraph = false;
@@ -76,14 +82,24 @@ void fragment() {
 			float g = (1.0 - smoothstep(0.0, 3.2, d)) * step(0.0, d);
 			o = mix(o, vec4(1.0, 1.0, 0.94, 0.55), g * 0.7);
 		}
-		// slips are cut from other cards: paper tinted toward the chunk's colour
-		vec3 col = mix(paper.rgb, tint.rgb, 0.16);
-		col += (hash12(floor(p)) - 0.5) * 0.035;
-		// a coloured edge stripe down the left, so the chunk's type still reads
-		float stripe = smoothstep(lo.x + 5.0, lo.x + 3.5, p.x);
-		col = mix(col, tint.rgb, stripe);
+		// the slip is a piece of another card: its pale ground with the checker print
+		vec3 col = has_src ? src3.rgb : paper.rgb;
+		if (has_src) {
+			vec2 cell = floor((p + vec2(seed * 3.0)) / 9.0);
+			col = mix(col, mix(src3.rgb, src2.rgb, 0.55), mod(cell.x + cell.y, 2.0));
+			// a sliver of that card's candy-stripe border along one cut edge
+			float e = sliver == 1 ? p.y - lo.y : (sliver == 2 ? hi.y - p.y : (sliver == 3 ? p.x - lo.x : 99.0));
+			if (e < 5.5) {
+				float t = fract((p.x + p.y) / 10.0);
+				vec3 st = t < 0.42 ? src1.rgb : (t < 0.66 ? src2.rgb : src3.rgb);
+				col = mix(col, st, 1.0 - smoothstep(4.5, 5.5, e));
+			}
+		} else {
+			col = mix(col, tint.rgb, 0.12);
+		}
+		col += (hash12(floor(p)) - 0.5) * 0.03;
 		// the cut edge: a thin darker line where the scissors went through
-		col = mix(col, tint.rgb * 0.55, (1.0 - smoothstep(0.6, 1.6, -d)) * 0.8);
+		col = mix(col, (has_src ? src1.rgb : tint.rgb) * 0.55, (1.0 - smoothstep(0.6, 1.6, -d)) * 0.75);
 		o = mix(o, vec4(col, 1.0), clamp(0.5 - d, 0.0, 1.0));
 		// glue sheen across the slip
 		float sheen = (1.0 - smoothstep(0.0, 4.0, abs(p.y - p.x * 0.25 - rect_size.y * 0.15 - mod(seed, 7.0) * 3.0)));

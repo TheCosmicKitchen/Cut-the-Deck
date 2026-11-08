@@ -74,7 +74,7 @@ static func cut(db: Dictionary, run: Dictionary, uid: String, ci: int, slot: Str
 	if not card.clauses[ci].has("holes"):
 		card.clauses[ci].holes = []
 	card.clauses[ci].holes.append(slot)
-	run.clipboard.append(Grammar.strip_chunk(ch))
+	run.clipboard.append(Grammar.strip_chunk(ch, card.base))
 	_tidy(card)
 	return _ok()
 
@@ -104,7 +104,7 @@ static func glue(db: Dictionary, run: Dictionary, uid: String, ci: int, slot: St
 		card.clauses[ci].holes.erase(slot)
 	run.clipboard.remove_at(clip_idx)
 	if old:
-		run.clipboard.append(Grammar.strip_chunk(old))
+		run.clipboard.append(Grammar.strip_chunk(old, card.base))
 	return _ok()
 
 
@@ -175,7 +175,7 @@ static func shred(db: Dictionary, run: Dictionary, uid: String) -> Dictionary:
 			if not clause[slot]:
 				continue
 			if run.clipboard.size() < db.rules.clipboardSize:
-				run.clipboard.append(Grammar.strip_chunk(clause[slot]))
+				run.clipboard.append(Grammar.strip_chunk(clause[slot], card.base))
 			else:
 				lost += 1
 	run.deck.erase(card)

@@ -47,9 +47,13 @@ export function cloneCard(card) {
   return JSON.parse(JSON.stringify(card));
 }
 
-export function stripChunk(ch) {
+// fromCard: the card it is being cut from. A slip keeps the card it was first cut
+// from, so its paper still shows where it came from.
+export function stripChunk(ch, fromCard) {
   const out = { type: ch.type, id: ch.id };
   if (ch.neg) out.neg = true;
+  const from = ch.from ?? fromCard;
+  if (from) out.from = from;
   return out;
 }
 

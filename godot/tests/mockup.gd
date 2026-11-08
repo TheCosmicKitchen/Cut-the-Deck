@@ -22,7 +22,7 @@ func _ready() -> void:
 	root.add_child(bg)
 
 	var rows := [["rough", "Glued slips", "rough hand-cut paper,\\nwet glue shine"], ["label", "Taped labels", "cut paper held\\nwith a strip of tape"]]
-	var captions := ["Untouched card:\nprinted text, cut guides,\n'if' arrow", "Strike after its\nTarget was cut out", "Strike with 'to ALL\nenemies' glued in", "Reckless Swing: target\ncut, drawback muted", "Jab Defend: glued\n'unless', typo, black-out,\nenemy about to edit"]
+	var captions := ["Untouched card:\nprinted text, cut guides,\n'if' arrow", "Strike after its\nTarget was cut out", "Strike with 'to ALL enemies'\n(from Reckless Swing) and\n'When drawn' (from Second Wind)", "Reckless Swing: target\ncut, drawback muted", "Jab Defend: a 9 from Bulwark,\n'if' from Opening Gambit,\ntypo, black-out, enemy edit"]
 	for r in rows.size():
 		var y := 70 + r * 500
 		var head := Look.label(rows[r][1], "title", 34, Look.INK)
@@ -55,20 +55,29 @@ func _card(db: Dictionary, id: String, uid: String) -> Dictionary:
 
 func _cards(db: Dictionary) -> Array:
 	var run := {"deck": [_card(db, "cheap_shot", "c"), _card(db, "strike", "s1"), _card(db, "strike", "s2"),
-		_card(db, "reckless_swing", "r"), _card(db, "jab", "j"), _card(db, "defend", "d")],
+		_card(db, "reckless_swing", "r"), _card(db, "jab", "j"), _card(db, "defend", "d"),
+		_card(db, "second_wind", "w"), _card(db, "bulwark", "b"), _card(db, "opening", "o")],
 		"ink": 99, "clipboard": [], "freeUses": {}, "sandbox": true}
-	Edits.cut(db, run, "r", 0, "target")                       # clipboard: to ALL enemies
-	Edits.glue(db, run, "s2", 0, "target", 0)                  # glued in; old target to clipboard
-	Edits.cut(db, run, "s1", 0, "target")                      # hole on Strike
+	var clip := func(): return run.clipboard.size() - 1
+	# Strike 2: "to ALL enemies" cut from Reckless Swing, "When drawn" from Second Wind
+	Edits.cut(db, run, "r", 0, "target")
+	Edits.glue(db, run, "s2", 0, "target", clip.call())
+	Edits.cut(db, run, "w", 0, "trigger")
+	Edits.glue(db, run, "s2", 0, "trigger", clip.call())
+	# Strike 1: its target cut out, leaving a hole
+	Edits.cut(db, run, "s1", 0, "target")
 	Edits.mute(db, run, "r", 1, "verb")
-	run.clipboard.append({"type": "condition", "id": "has_block", "neg": true})
-	Edits.glue(db, run, "j", 0, "condition", run.clipboard.size() - 1)
+	# Jab: amount 9 from Bulwark (a Block card), "if this is your first card" from Opening Gambit
+	Edits.cut(db, run, "b", 0, "amount")
+	Edits.glue(db, run, "j", 0, "amount", clip.call())
+	Edits.cut(db, run, "o", 0, "condition")
+	Edits.glue(db, run, "j", 0, "condition", clip.call())
 	Edits.merge(db, run, "j", "d")
 	var j: Dictionary = Edits.find_card(run, "j")
-	j.clauses[0].amount.id = 4
-	j.clauses[0].amount.enemyEdit = true
 	j.clauses[0].repeat.muted = true
 	j.clauses[0].repeat.redacted = true
+	j.clauses[1].amount.enemyEdit = true
+	j.clauses[1].amount.id = 4
 	return [
 		{"card": Edits.find_card(run, "c"), "opts": {}},
 		{"card": Edits.find_card(run, "s1"), "opts": {}},
