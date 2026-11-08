@@ -45,6 +45,7 @@ export function cut(db, run, uid, ci, slot) {
   if (!canPay(db, run, 'scissors')) return needInk(db, run, 'scissors');
   pay(db, run, 'scissors');
   card.clauses[ci][slot] = null;
+  (card.clauses[ci].holes ??= []).push(slot); // the card shows a hole where it was
   run.clipboard.push(stripChunk(ch));
   tidy(card);
   return { ok: true };
@@ -63,7 +64,9 @@ export function glue(db, run, uid, ci, slot, clipIdx) {
   pay(db, run, 'glue');
   if (isNew) card.clauses.push(emptyClause());
   const old = card.clauses[ci][slot];
+  ch.pasted = true; // shown as a slip glued onto the card
   card.clauses[ci][slot] = ch;
+  if (card.clauses[ci].holes) card.clauses[ci].holes = card.clauses[ci].holes.filter((s) => s !== slot);
   run.clipboard.splice(clipIdx, 1);
   if (old) run.clipboard.push(stripChunk(old));
   return { ok: true };

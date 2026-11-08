@@ -1,4 +1,5 @@
-## Style mockup: title box, five cards, a dialog box. Saves a 1920x1080 PNG.
+## Style mockup for the cut-and-paste look. Every edited card is made with the
+## real Workshop tools, so holes and pasted slips come from the engine.
 ## godot --path godot res://tests/mockup.tscn -- out.png
 extends Node
 
@@ -8,12 +9,10 @@ func _ready() -> void:
 	var vp := SubViewport.new()
 	vp.size = Vector2i(1920, 1080)
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	vp.msaa_2d = Viewport.MSAA_DISABLED
 	add_child(vp)
 	var root := Control.new()
 	root.size = Vector2(1920, 1080)
 	vp.add_child(root)
-
 	var bg := ColorRect.new()
 	bg.size = root.size
 	var bm := ShaderMaterial.new()
@@ -22,40 +21,27 @@ func _ready() -> void:
 	bg.material = bm
 	root.add_child(bg)
 
-	var title := Look.candy(Vector2(640, 104), "ui", Vector2(12, 12), 16.0, 20.0)
-	title.position = Vector2(640, 26)
-	root.add_child(title)
-	var tl := Look.label("Cut the Deck", "title", 60, Look.INK)
-	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	tl.size = Vector2(640, 104)
-	tl.position = Vector2(0, -3)
-	title.add_child(tl)
-
-	var cards := _cards(db)
-	for i in cards.size():
-		var c: Dictionary = cards[i]
-		var cv := CardView.new().setup(db, c.card, "hand", c.opts)
-		cv.position = Vector2(150 + i * 334, 190)
-		root.add_child(cv)
-		if i == 1:
-			cv.set_selected(true)
-
-	var dlg := Look.candy(Vector2(1640, 300), "ui", Vector2(14, 14), 20.0, 22.0)
-	dlg.position = Vector2(140, 720)
-	root.add_child(dlg)
-	var txt := Look.label("Cut chunks off your cards and glue them onto others! A card without a Verb can't be played, so glue one back in. Watch out: enemies edit your cards too!", "body_bold", 36, Look.INK)
-	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	txt.position = Vector2(64, 50)
-	txt.size = Vector2(1500, 200)
-	dlg.add_child(txt)
-	var star := TextureRect.new()
-	star.texture = Px.sprite("star")
-	star.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	star.stretch_mode = TextureRect.STRETCH_SCALE
-	star.size = Vector2(36, 36)
-	star.position = Vector2(1640 - 74, 300 - 70)
-	dlg.add_child(star)
+	var rows := [["rough", "Glued slips", "rough hand-cut paper,\\nwet glue shine"], ["label", "Taped labels", "cut paper held\\nwith a strip of tape"]]
+	var captions := ["Untouched card:\nprinted text, cut guides,\n'if' arrow", "Strike after its\nTarget was cut out", "Strike with 'to ALL\nenemies' glued in", "Reckless Swing: target\ncut, drawback muted", "Jab Defend: glued\n'unless', typo, black-out,\nenemy about to edit"]
+	for r in rows.size():
+		var y := 70 + r * 500
+		var head := Look.label(rows[r][1], "title", 34, Look.INK)
+		head.position = Vector2(40, y + 20)
+		root.add_child(head)
+		var sub := Look.label(rows[r][2].replace("\\n", "\n"), "body", 20, Look.INK2)
+		sub.position = Vector2(42, y + 70)
+		root.add_child(sub)
+		var cards := _cards(db)
+		for i in cards.size():
+			var c: Dictionary = cards[i]
+			var o: Dictionary = c.opts.duplicate()
+			o.slip_style = rows[r][0]
+			var cv := CardView.new().setup(db, c.card, "hand", o)
+			cv.position = Vector2(300 + i * 318, y)
+			root.add_child(cv)
+			var cap := Look.label(captions[i], "body", 17, Look.INK2)
+			cap.position = Vector2(300 + i * 318, y + 372)
+			root.add_child(cap)
 
 	for i in 10:
 		await get_tree().process_frame
@@ -68,19 +54,25 @@ func _card(db: Dictionary, id: String, uid: String) -> Dictionary:
 
 
 func _cards(db: Dictionary) -> Array:
-	var run := {"deck": [_card(db, "jab", "m5"), _card(db, "defend", "m6")], "ink": 99, "clipboard": [], "freeUses": {}, "sandbox": true}
-	Edits.merge(db, run, "m5", "m6")
-	var ed: Dictionary = run.deck[0]
-	ed.clauses[0].amount.id = 4
-	ed.clauses[0].amount.enemyEdit = true
-	ed.clauses.append(Grammar.parse_clause({"verb": "deal", "amount": 6, "target": "self"}))
-	ed.clauses[2].verb.muted = true
-	ed.clauses[0].repeat.muted = true
-	ed.clauses[0].repeat.redacted = true
+	var run := {"deck": [_card(db, "cheap_shot", "c"), _card(db, "strike", "s1"), _card(db, "strike", "s2"),
+		_card(db, "reckless_swing", "r"), _card(db, "jab", "j"), _card(db, "defend", "d")],
+		"ink": 99, "clipboard": [], "freeUses": {}, "sandbox": true}
+	Edits.cut(db, run, "r", 0, "target")                       # clipboard: to ALL enemies
+	Edits.glue(db, run, "s2", 0, "target", 0)                  # glued in; old target to clipboard
+	Edits.cut(db, run, "s1", 0, "target")                      # hole on Strike
+	Edits.mute(db, run, "r", 1, "verb")
+	run.clipboard.append({"type": "condition", "id": "has_block", "neg": true})
+	Edits.glue(db, run, "j", 0, "condition", run.clipboard.size() - 1)
+	Edits.merge(db, run, "j", "d")
+	var j: Dictionary = Edits.find_card(run, "j")
+	j.clauses[0].amount.id = 4
+	j.clauses[0].amount.enemyEdit = true
+	j.clauses[0].repeat.muted = true
+	j.clauses[0].repeat.redacted = true
 	return [
-		{"card": _card(db, "strike", "a"), "opts": {}},
-		{"card": _card(db, "reckless_swing", "b"), "opts": {}},
-		{"card": _card(db, "cheap_shot", "c"), "opts": {}},
-		{"card": _card(db, "second_wind", "d"), "opts": {}},
-		{"card": ed, "opts": {"tele": [{"enemy": 0, "ci": 1, "slot": "verb"}], "enemy_names": {0: "Inverter"}}},
+		{"card": Edits.find_card(run, "c"), "opts": {}},
+		{"card": Edits.find_card(run, "s1"), "opts": {}},
+		{"card": Edits.find_card(run, "s2"), "opts": {}},
+		{"card": Edits.find_card(run, "r"), "opts": {}},
+		{"card": j, "opts": {"tele": [{"enemy": 0, "ci": 1, "slot": "verb"}], "enemy_names": {0: "Inverter"}}},
 	]

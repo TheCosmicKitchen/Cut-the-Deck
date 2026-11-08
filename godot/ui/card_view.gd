@@ -195,39 +195,69 @@ func _build() -> void:
 	_fit.call_deferred()
 
 
+## One clause. A trigger sits on its own line above. A condition gets its own line
+## too, and an indent arrow leads from it into the part it controls.
 func _clause(clause: Dictionary, ci: int, tele: Array, show_empty: bool) -> Control:
 	var box := VBoxContainer.new()
 	box.mouse_filter = MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", -6)
-	var lead := HFlowContainer.new()
-	lead.mouse_filter = MOUSE_FILTER_IGNORE
-	var flow := HFlowContainer.new()
-	flow.mouse_filter = MOUSE_FILTER_IGNORE
-	flow.add_theme_constant_override("h_separation", -6)
-	flow.add_theme_constant_override("v_separation", -6)
-	var mw := size.x - 36 + 12
-	var fs := 19 if kind == "hand" else 22
-	for tok in Grammar.clause_tokens(db, clause, show_empty):
+	box.add_theme_constant_override("separation", -8)
+	var holes: Array = clause.get("holes", [])
+	var lead: Array[ChunkView] = []
+	var cond: Array[ChunkView] = []
+	var rest: Array[ChunkView] = []
+	var mw := size.x - 36 + 16
+	var fs := 20 if kind == "hand" else 23
+	for slot in Grammar.SLOTS:
+		var ch = clause[slot]
+		var show: bool = ch != null or show_empty or Grammar.REQUIRED.has(slot) or holes.has(slot)
+		if not show:
+			continue
+		var text: String = Grammar.chunk_label(db, ch).trim_suffix(":") if ch else slot
 		var tl := false
 		for t in tele:
-			if t.ci == ci and t.slot == tok.slot:
+			if t.ci == ci and t.slot == slot:
 				tl = true
-		var text: String = tok.text
-		if tok.slot == "trigger":
-			text = text.trim_suffix(":")
-		var cv := ChunkView.new().setup(tok.slot, tok.chunk, text, {
-			"font_size": fs, "max_w": mw, "clickable": opts.get("chunks_clickable", false),
-			"fits": opts.get("fit_type", "") == tok.slot, "telegraph": tl, "ci": ci, "uid": card.uid})
+		var cv := ChunkView.new().setup(slot, ch, text, {
+			"font_size": fs, "max_w": mw - (30.0 if clause.condition and slot != "condition" else 0.0),
+			"clickable": opts.get("chunks_clickable", false), "fits": opts.get("fit_type", "") == slot,
+			"telegraph": tl, "ci": ci, "uid": card.uid, "slip_style": opts.get("slip_style", "rough"),
+			"hole_col": opts.get("hole_col", Look.PINK)})
 		cv.pressed.connect(func(v): chunk_pressed.emit(self, v))
 		chunks.append(cv)
-		if tok.slot == "trigger":
-			lead.add_child(cv)
+		if slot == "trigger":
+			lead.append(cv)
+		elif slot == "condition" and (ch != null or holes.has(slot)):
+			cond.append(cv)
 		else:
-			flow.add_child(cv)
-	if lead.get_child_count():
-		box.add_child(lead)
-	box.add_child(flow)
+			rest.append(cv)
+	if not lead.is_empty():
+		box.add_child(_flow(lead))
+	if cond.is_empty():
+		box.add_child(_flow(rest))
+	else:
+		box.add_child(_flow(cond))
+		var row := HBoxContainer.new()
+		row.mouse_filter = MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", -4)
+		var arrow := IndentArrow.new()
+		arrow.col = ChunkView.INK.condition
+		arrow.custom_minimum_size = Vector2(30, 34)
+		row.add_child(arrow)
+		var f := _flow(rest)
+		f.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(f)
+		box.add_child(row)
 	return box
+
+
+func _flow(items: Array) -> HFlowContainer:
+	var flow := HFlowContainer.new()
+	flow.mouse_filter = MOUSE_FILTER_IGNORE
+	flow.add_theme_constant_override("h_separation", -9)
+	flow.add_theme_constant_override("v_separation", -10)
+	for it in items:
+		flow.add_child(it)
+	return flow
 
 
 func _tag(text: String, col: Color) -> Control:

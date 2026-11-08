@@ -1,24 +1,39 @@
-## One chunk of card text as a glossy candy pill. Long chunks wrap to more lines.
+## One chunk of card text, drawn as part of a physical card:
+##   printed  words printed on the card, with faint dotted cut-guides
+##   slip     a chunk glued on from elsewhere: a rough hand-cut paper slip
+##   hole     an empty slot: the chunk was cut out and the backdrop shows through
+## Marker overlays: muted (scribbled out), redacted (black bar), enemy edit (red pen).
 class_name ChunkView
 extends Control
 
 signal pressed(view: ChunkView)
 
-const PILL := preload("res://shaders/pill.gdshader")
-const M := 6.0       # room around the pill for shadow and rings
-const PAD := Vector2(10, 4)
+const CUT := preload("res://shaders/cut.gdshader")
+const MARKER := preload("res://shaders/marker.gdshader")
+const M := 8.0
+const PAD := Vector2(7, 3)
+
+## Ink colours for printed text, by chunk type.
+const INK := {
+	"verb": Color("#d62f52"), "amount": Color("#2f66d8"), "repeat": Color("#8b45d6"),
+	"target": Color("#1f9a5a"), "condition": Color("#c77a00"), "trigger": Color("#2a8aa2"),
+}
 
 var slot := "verb"
 var chunk = null
 var text := ""
-var font_size := 19
+var font_size := 20
 var max_w := 220.0
 var clickable := false
 var fits := false
 var telegraph := false
+var slip_style := "rough"   # "rough" (glued slip) or "label" (taped label)
+var hole_col := Color("#f9b8d6")
 var ci := 0
 var uid := ""
+var look := "printed"
 var _mat: ShaderMaterial
+var _holder: Control
 var _label: Label
 
 
@@ -26,13 +41,19 @@ func setup(p_slot: String, p_chunk, p_text: String, opts := {}) -> ChunkView:
 	slot = p_slot
 	chunk = p_chunk
 	text = p_text
-	font_size = opts.get("font_size", 19)
+	font_size = opts.get("font_size", 20)
 	max_w = opts.get("max_w", 220.0)
 	clickable = opts.get("clickable", false)
 	fits = opts.get("fits", false)
 	telegraph = opts.get("telegraph", false)
+	slip_style = opts.get("slip_style", "rough")
+	hole_col = opts.get("hole_col", hole_col)
 	ci = opts.get("ci", 0)
 	uid = opts.get("uid", "")
+	if chunk == null:
+		look = "hole"
+	elif chunk.get("pasted", false) or opts.get("force_slip", false):
+		look = "slip"
 	mouse_filter = MOUSE_FILTER_STOP if clickable else MOUSE_FILTER_IGNORE
 	if clickable:
 		mouse_default_cursor_shape = CURSOR_POINTING_HAND
@@ -44,10 +65,10 @@ func _build() -> void:
 	var kind := "chunk"
 	var fs := font_size
 	var shown := text
-	if chunk == null:
+	if look == "hole":
 		shown = slot.to_upper()
 		kind = "body_bold"
-		fs = int(font_size * 0.72)
+		fs = int(font_size * 0.66)
 	elif slot == "trigger":
 		shown = text.to_upper()
 		fs = int(font_size * 0.78)
@@ -65,55 +86,83 @@ func _build() -> void:
 	var tw := 0.0
 	for l in lines:
 		tw = max(tw, f.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
-	var line_h := f.get_height(fs) - 2.0
-	var body := Vector2(ceil(tw) + PAD.x * 2, ceil(line_h * lines.size()) + PAD.y * 2)
-	var sz := body + Vector2(M, M) * 2.0 + Vector2(0, 2)
+	var line_h := f.get_height(fs) - 3.0
+	var extra_x := 6.0 if look == "slip" else 0.0   # room for the colour stripe
+	var body := Vector2(ceil(tw) + PAD.x * 2 + extra_x, ceil(line_h * lines.size()) + PAD.y * 2)
+	if look == "hole":
+		body.y = max(body.y, f.get_height(int(font_size)) + PAD.y * 2 - 3)
+		body.x = max(body.x, 52.0)
+	var sz := body + Vector2(M, M) * 2.0
 	custom_minimum_size = sz
 	size = sz
+
+	_holder = Control.new()
+	_holder.mouse_filter = MOUSE_FILTER_IGNORE
+	_holder.size = sz
+	_holder.pivot_offset = sz * 0.5
+	var sd := float(hash(uid + text + str(ci)) % 1000)
+	if look == "slip":
+		_holder.rotation_degrees = (fmod(sd * 7.31, 2.0) - 1.0) * 3.2
+	add_child(_holder)
 
 	var bg := ColorRect.new()
 	bg.size = sz
 	bg.mouse_filter = MOUSE_FILTER_IGNORE
 	_mat = ShaderMaterial.new()
-	_mat.shader = PILL
+	_mat.shader = CUT
 	_mat.set_shader_parameter("rect_size", sz)
 	_mat.set_shader_parameter("margin", M)
-	var cols: Array = Look.CHUNK[slot]
-	_mat.set_shader_parameter("col", cols[0])
-	_mat.set_shader_parameter("line", cols[1] if chunk != null else Look.INK2)
-	_mat.set_shader_parameter("seed", float(hash(uid + text) % 100))
+	_mat.set_shader_parameter("seed", fmod(sd, 97.0))
+	_mat.set_shader_parameter("tint", INK[slot])
+	_mat.set_shader_parameter("hole_col", hole_col)
+	_mat.set_shader_parameter("mode", {"printed": 0, "slip": 1, "hole": 2}[look])
+	_mat.set_shader_parameter("tape", look == "slip" and slip_style == "label")
+	_mat.set_shader_parameter("glue", slip_style == "rough")
 	bg.material = _mat
-	add_child(bg)
+	_holder.add_child(bg)
 
-	_label = Look.label("\n".join(lines), kind, fs, Look.CHUNK_TEXT.get(slot, Look.WHITE))
-	_label.add_theme_constant_override("line_spacing", -2)
-	_label.position = Vector2(M + PAD.x, M + PAD.y - 1)
+	var col: Color = INK[slot]
+	if look == "hole":
+		col = Color(1, 1, 1, 0.75)
+	_label = Look.label("\n".join(lines), kind, fs, col)
+	_label.add_theme_constant_override("line_spacing", -3)
+	_label.position = Vector2(M + PAD.x + extra_x, M + PAD.y - 2)
 	_label.size = Vector2(tw + 2, line_h * lines.size())
-	add_child(_label)
+	if look == "hole":
+		_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_label.position = Vector2(M, M)
+		_label.size = body
+	_holder.add_child(_label)
+
+	if chunk != null:
+		var marks := []
+		if chunk.get("redacted", false):
+			marks.append(0)
+		elif chunk.get("muted", false):
+			marks.append(1)
+		if chunk.get("enemyEdit", false):
+			marks.append(2)
+		for m in marks:
+			var mr := ColorRect.new()
+			mr.size = sz
+			mr.mouse_filter = MOUSE_FILTER_IGNORE
+			var mm := ShaderMaterial.new()
+			mm.shader = MARKER
+			mm.set_shader_parameter("rect_size", sz)
+			mm.set_shader_parameter("margin", M)
+			mm.set_shader_parameter("mode", m)
+			mm.set_shader_parameter("seed", fmod(sd, 31.0))
+			mr.material = mm
+			_holder.add_child(mr)
+		if chunk.get("muted", false) and not chunk.get("redacted", false):
+			_label.modulate = Color(1, 1, 1, 0.5)
 	refresh()
 
 
 func refresh() -> void:
-	var is_empty: bool = chunk == null
-	var muted: bool = not is_empty and chunk.get("muted", false)
-	var redacted: bool = not is_empty and chunk.get("redacted", false)
-	_mat.set_shader_parameter("empty", is_empty)
-	_mat.set_shader_parameter("muted", muted)
-	_mat.set_shader_parameter("redacted", redacted)
-	_mat.set_shader_parameter("enemy_edit", not is_empty and chunk.get("enemyEdit", false))
 	_mat.set_shader_parameter("telegraph", telegraph)
 	_mat.set_shader_parameter("fits", fits)
-	var c: Color = Look.CHUNK_TEXT.get(slot, Look.WHITE)
-	if is_empty:
-		c = Look.INK2
-	elif muted:
-		c = Color("#9a94ae")
-	if redacted:
-		c = Color(0, 0, 0, 0)
-	_label.add_theme_color_override("font_color", c)
-	var outline: bool = not is_empty and not muted and not Look.CHUNK_TEXT.has(slot)
-	_label.add_theme_constant_override("outline_size", 3 if outline else 0)
-	_label.add_theme_color_override("font_outline_color", Color(Look.CHUNK[slot][1], 0.55))
 
 
 func set_hint(on: bool) -> void:

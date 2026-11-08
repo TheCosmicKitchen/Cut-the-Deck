@@ -70,6 +70,10 @@ static func cut(db: Dictionary, run: Dictionary, uid: String, ci: int, slot: Str
 		return _need_ink(db, run, "scissors")
 	_pay(db, run, "scissors")
 	card.clauses[ci][slot] = null
+	# the card shows a hole where it was
+	if not card.clauses[ci].has("holes"):
+		card.clauses[ci].holes = []
+	card.clauses[ci].holes.append(slot)
 	run.clipboard.append(Grammar.strip_chunk(ch))
 	_tidy(card)
 	return _ok()
@@ -94,7 +98,10 @@ static func glue(db: Dictionary, run: Dictionary, uid: String, ci: int, slot: St
 	if is_new:
 		card.clauses.append(Grammar.empty_clause())
 	var old = card.clauses[ci][slot]
+	ch.pasted = true  # shown as a slip glued onto the card
 	card.clauses[ci][slot] = ch
+	if card.clauses[ci].has("holes"):
+		card.clauses[ci].holes.erase(slot)
 	run.clipboard.remove_at(clip_idx)
 	if old:
 		run.clipboard.append(Grammar.strip_chunk(old))
