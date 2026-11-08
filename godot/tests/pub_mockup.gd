@@ -21,35 +21,14 @@ func _ready() -> void:
 	bg.material = bm
 	root.add_child(bg)
 
-	var mk := func(id, uid): return Grammar.make_card(RunState.card_def(db, id), uid)
-	var row1 := [["reckless_swing", "Newspaper"], ["jab", "Comics"], ["blood_price", "Pulp Horror"],
-		["all_in", "Zine"], ["defend", "Instruction Manual (repeats print as ×2)"], ["second_wind", "Almanac"]]
-	for i in row1.size():
-		var c: Dictionary = mk.call(row1[i][0], "p%d" % i)
-		if c.base == "defend":
-			# mock: a manual card that repeats, to show the ×2 style
-			c.clauses[0].repeat = {"type": "repeat", "id": "twice"}
-			c.clauses.append(Grammar.parse_clause({"trigger": "end_turn", "verb": "lose_block", "amount": 2}))
-		_place(root, db, c, Vector2(84 + i * 300, 52), row1[i][1])
-
-	var cut := remix(db)
-	var caps := ["Jab + a 9, 'to ALL' (paper),\n'three times' (zine)",
-		"Reckless Swing + Block (manual),\n'When drawn' (almanac)",
-		"Second Wind + 'At end of turn'\n(manual), a 4 (pulp)",
-		"All In + 'if' and 'Draw'\n(pulp horror)"]
-	for i in cut.size():
-		_place(root, db, cut[i], Vector2(84 + i * 300, 566), caps[i])
-	# all six cut together: words and picture from every publication
-	var all6 := showcase(db)
-	var big := PubCard.new().setup(db, all6, {"collage": [["slugger", Pub.NEWS], ["hero_jab", Pub.COMIC], ["blood_price", Pub.PULP],
-		["punk", Pub.ZINE], ["flatpack", Pub.MANUAL], ["farmer_wind", Pub.ALMANAC]]})
-	big.position = Vector2(1330, 552)
-	big.scale = Vector2(1.12, 1.12)
-	big.rotation = deg_to_rad(-1.5)
-	root.add_child(big)
-	var bl := Look.label("All six cut together:\na newspaper Strike\nrebuilt from comics,\npulp, zine, manual\nand almanac pieces,\npicture included", "body", 15, Color("#fbe9d0"))
-	bl.position = Vector2(1640, 640)
-	root.add_child(bl)
+	var names := ["Newspaper", "Comics", "Pulp Horror", "Zine", "Instruction Manual", "Almanac"]
+	var plain := six(db)
+	var cut := swapped(db)
+	var notes := ["+ 'to an enemy', 'Draw'", "+ 'to ALL', 'three times', a 2", "+ 'Deal', a 5",
+		"+ 'twice', a 2", "+ a 4, a 3, 'When drawn'", "+ 'At end of turn', an X;\none trigger cut out"]
+	for i in 6:
+		_place(root, db, plain[i], Vector2(84 + i * 300, 40), names[i])
+		_place(root, db, cut[i], Vector2(84 + i * 300, 560), notes[i])
 
 	for i in 30:
 		await get_tree().process_frame
@@ -67,27 +46,44 @@ func _place(root: Control, db: Dictionary, card: Dictionary, pos: Vector2, cap: 
 	root.add_child(l)
 
 
-## A newspaper Strike with every word replaced by pieces of the other five,
-## and a second clause glued on from the manual.
-static func showcase(db: Dictionary) -> Dictionary:
+## One card of each publication.
+static func six(db: Dictionary) -> Array:
+	var run := _run(db)
+	return run.deck
+
+
+static func _run(db: Dictionary) -> Dictionary:
 	var mk := func(id, uid): return Grammar.make_card(RunState.card_def(db, id), uid)
-	var run := {"deck": [mk.call("strike", "s"), mk.call("jab", "j"), mk.call("blood_price", "bp"), mk.call("all_in", "a"),
-		mk.call("defend", "d"), mk.call("second_wind", "w"), mk.call("reckless_swing", "r")],
-		"ink": 99, "clipboard": [], "freeUses": {}, "sandbox": true}
-	var move := func(from_uid: String, fci: int, to_uid: String, tci: int, slot: String):
-		Edits.cut(db, run, from_uid, fci, slot)
-		var r: Dictionary = Edits.glue(db, run, to_uid, tci, slot, run.clipboard.size() - 1)
-		if not r.ok:
-			push_error(r.error)
+	var deck := [mk.call("reckless_swing", "R"), mk.call("jab", "J"), mk.call("blood_price", "B"),
+		mk.call("all_in", "A"), mk.call("defend", "D"), mk.call("second_wind", "W")]
+	# mock: a manual card that repeats and has a second step, to show ×2 and steps
+	deck[4].clauses[0].repeat = {"type": "repeat", "id": "twice"}
+	deck[4].clauses.append(Grammar.parse_clause({"trigger": "end_turn", "verb": "lose_block", "amount": 2}))
+	return {"deck": deck, "ink": 99, "clipboard": [], "freeUses": {}, "sandbox": true}
+
+
+## The same six, with words swapped between them using the real tools.
+static func swapped(db: Dictionary) -> Array:
+	var run := _run(db)
+	var swap := func(u1: String, c1: int, s1: String, u2: String, c2: int, s2: String):
+		Edits.cut(db, run, u1, c1, s1)
+		Edits.cut(db, run, u2, c2, s2)
+		var r1: Dictionary = Edits.glue(db, run, u2, c2, s2, 0)
+		var r2: Dictionary = Edits.glue(db, run, u1, c1, s1, 0)
+		if not r1.ok or not r2.ok:
+			push_error("swap %s/%s: %s %s" % [u1, u2, r1.get("error", ""), r2.get("error", "")])
 		run.clipboard.clear()
-	move.call("w", 0, "s", 0, "trigger")
-	move.call("j", 0, "s", 0, "verb")
-	move.call("bp", 1, "s", 0, "amount")
-	move.call("a", 0, "s", 0, "repeat")
-	move.call("r", 0, "s", 0, "target")
-	move.call("d", 0, "s", 1, "verb")
-	move.call("d", 0, "s", 1, "amount")
-	return Edits.find_card(run, "s")
+	swap.call("R", 0, "target", "J", 0, "target")
+	swap.call("J", 0, "repeat", "A", 0, "repeat")
+	swap.call("B", 0, "verb", "R", 1, "verb")
+	swap.call("D", 0, "amount", "B", 1, "amount")
+	swap.call("W", 0, "trigger", "D", 1, "trigger")
+	swap.call("A", 0, "amount", "W", 0, "amount")
+	swap.call("J", 0, "amount", "D", 1, "amount")
+	# and one trigger simply cut out, leaving a hole
+	Edits.cut(db, run, "W", 1, "trigger")
+	run.clipboard.clear()
+	return run.deck
 
 
 ## The four cut-up cards, edited with the real tools.

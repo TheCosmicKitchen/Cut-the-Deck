@@ -593,156 +593,333 @@ class Canvas extends Control:
 		dot(hub, 1.6, WHITE)
 		pop()
 
-	## A person, feet at the origin, ~56 units tall, facing right.
-	## spec: skin, top, legs, hands [front, back], feet [front, back], plus extras.
-	func person(spec: Dictionary) -> void:
-		var skin: Color = spec.get("skin", SKIN)
-		var top: Color = spec.get("top", RED)
-		var legs: Color = spec.get("legs", DENIM)
-		var hip := Vector2(0, -24)
-		var sh := Vector2(1, -42)
-		var hands: Array = spec.get("hands", [Vector2(14, -30), Vector2(-10, -26)])
-		var feet: Array = spec.get("feet", [Vector2(7, 0), Vector2(-7, 0)])
-		var lean: float = spec.get("lean", 0.0)
-		sh += Vector2(lean, 0)
-		var head := sh + Vector2(lean * 0.4, -9)
-		# back limbs
-		paper(stroke([hip + Vector2(-2, 0), (hip + feet[1]) * 0.5 + Vector2(-2, 1), feet[1]], 5.0), legs.darkened(0.15))
-		paper(stroke([sh + Vector2(-3, 1), (sh + hands[1]) * 0.5 + Vector2(-1, 3), hands[1]], 4.0), top.darkened(0.15))
-		paper(circ(hands[1], 2.6), skin.darkened(0.1))
-		if spec.has("cape"):
-			paper(PackedVector2Array([sh + Vector2(-5, 0), sh + Vector2(5, 0), Vector2(-14, -8), Vector2(-26, -2)]), spec.cape)
-		if spec.has("dress"):
-			paper(PackedVector2Array([sh + Vector2(-6, 2), sh + Vector2(6, 2), Vector2(12, -4), Vector2(-14, -2)]), spec.dress)
-		# torso
-		paper(PackedVector2Array([sh + Vector2(-7, 0), sh + Vector2(7, 0), hip + Vector2(6, 0), hip + Vector2(-6, 0)]), top)
-		if spec.has("stripes"):
+	# ---------- shaded figures ----------
+
+	## A shaded body part, lit from the upper left: a dark base with a lit shape
+	## inset toward the light. Each style prints the two layers its own way.
+	func part(pts: PackedVector2Array, col: Color, inset := 1.3) -> void:
+		if pts.size() < 3:
+			return
+		if style == "paper":
+			paper(pts, col)
+			return
+		if style == "line":
+			draw_colored_polygon(pts, Color.WHITE)
+			var loop := pts.duplicate()
+			loop.append(pts[0])
+			draw_polyline(loop, Color("#1a1a1a"), 0.75, true)
+			return
+		var dark: Color
+		var lit: Color
+		var off := Vector2(-0.9, -0.9) * inset
+		match style:
+			"ink":
+				dark = col.darkened(0.38)
+				lit = col
+			"photo":
+				dark = tone(col.darkened(0.45))
+				lit = tone(col.lightened(0.12))
+			"silhouette":
+				# rim light from the moon on the right; the rest falls into shadow
+				dark = Color("#ffb04a") if col != PULP_RED else Color("#ff6a4a")
+				lit = Color("#1a0620") if col != PULP_RED else PULP_RED.darkened(0.25)
+				off = Vector2(-1.3, 0.3) * inset
+			"xerox":
+				dark = Color(0.07, 0.07, 0.07)
+				lit = tone(col) if col.get_luminance() >= 0.6 else Color(0.07, 0.07, 0.07)
+			"woodcut":
+				dark = WOOD_INK
+				lit = WOOD_PAPER if col.get_luminance() >= 0.45 else WOOD_INK
+		draw_colored_polygon(pts, dark)
+		var inner := Geometry2D.offset_polygon(pts, -inset * 0.9, Geometry2D.JOIN_ROUND)
+		if not inner.is_empty():
+			var best: PackedVector2Array = inner[0]
+			for q in inner:
+				if q.size() > best.size():
+					best = q
+			var moved := PackedVector2Array()
+			for v in best:
+				moved.append(v + off)
+			var clipped := Geometry2D.intersect_polygons(moved, pts)
+			for c in clipped:
+				draw_colored_polygon(c, lit)
+		if style in ["ink", "woodcut", "xerox"]:
+			var loop2 := pts.duplicate()
+			loop2.append(pts[0])
+			draw_polyline(loop2, line_col(), {"ink": 1.3, "woodcut": 0.9, "xerox": 0.8}[style], true)
+
+	## a limb through joints, with a width at each joint
+	func limb(js: Array, ws: Array) -> PackedVector2Array:
+		var left := PackedVector2Array()
+		var right := PackedVector2Array()
+		var n := js.size()
+		for i in n:
+			var p: Vector2 = js[i]
+			var d: Vector2 = (js[mini(i + 1, n - 1)] - js[maxi(i - 1, 0)]).normalized()
+			var w: float = ws[i] * 0.5
+			left.append(p + d.orthogonal() * w)
+			right.append(p - d.orthogonal() * w)
+		# round the ends
+		var end_c: Vector2 = js[n - 1]
+		var end_d: Vector2 = (js[n - 1] - js[n - 2]).normalized()
+		left.append(end_c + end_d * ws[n - 1] * 0.45)
+		right.reverse()
+		left.append_array(right)
+		var st_c: Vector2 = js[0]
+		var st_d: Vector2 = (js[0] - js[1]).normalized()
+		left.append(st_c + st_d * ws[0] * 0.4)
+		return left
+
+	## A figure from joint positions (feet near the origin, ~74 units tall, facing right).
+	## j: head, sh (front shoulder), sh_b, el, el_b, ha, ha_b, hip, hip_b, kn, kn_b, ft, ft_b
+	## look: skin, top, legs, boots, build (shoulder width), hair, extras
+	func figure(j: Dictionary, look: Dictionary) -> void:
+		var skin: Color = look.get("skin", SKIN)
+		var top: Color = look.get("top", RED)
+		var legs: Color = look.get("legs", DENIM)
+		var boots: Color = look.get("boots", INK)
+		var arm_col: Color = look.get("sleeves", top)
+		var hand_col: Color = look.get("gloves", skin)
+		var thick: float = look.get("thick", 1.0)
+		var back := func(c: Color) -> Color: return c.darkened(0.2)
+		if look.has("cape"):
+			var c0: Vector2 = j.sh_b
+			part(PackedVector2Array([j.sh_b + Vector2(-1, -2), j.sh + Vector2(1, -2), j.hip + Vector2(-8, 10), j.hip_b + Vector2(-28, 16), j.hip_b + Vector2(-22, 2)]), look.cape)
+		# back arm and leg
+		part(limb([j.sh_b, j.el_b, j.ha_b], [7.0 * thick, 5.6 * thick, 4.6 * thick]), back.call(arm_col))
+		part(circ(j.ha_b, 3.4 * thick), back.call(hand_col))
+		part(limb([j.hip_b, j.kn_b, j.ft_b + Vector2(0, -3)], [9.5 * thick, 6.8 * thick, 5.0 * thick]), back.call(legs))
+		part(PackedVector2Array([j.ft_b + Vector2(-4, -6), j.ft_b + Vector2(3, -6), j.ft_b + Vector2(8, 0), j.ft_b + Vector2(-4, 0)]), back.call(boots))
+		if look.has("skirt"):
+			part(PackedVector2Array([j.hip_b + Vector2(-6, -4), j.hip + Vector2(6, -4), j.hip + Vector2(12, 22), j.hip_b + Vector2(-14, 22)]), look.skirt)
+		# torso: shoulders, waist, hips
+		var sw: float = look.get("build", 11.0)
+		var mid: Vector2 = (j.sh + j.sh_b) * 0.5
+		var hipm: Vector2 = (j.hip + j.hip_b) * 0.5
+		var waist := mid.lerp(hipm, 0.68)
+		var ax := (mid - hipm).normalized().orthogonal()
+		part(PackedVector2Array([j.sh_b + ax * 2.0, mid + ax * sw * 0.2 + (mid - hipm).normalized() * 2.0, j.sh - ax * 2.0,
+			waist - ax * sw * 0.55, hipm - ax * 7.0, hipm + ax * 7.0, waist + ax * sw * 0.55]), top)
+		if look.has("stripes"):
 			for i in 3:
-				var y := sh.y + 5.0 + i * 5.0
-				paper(rect(Vector2((sh.x + hip.x) * 0.5, y), 13, 1.8), spec.stripes, false, 0.2)
-		if spec.has("emblem"):
-			paper(star(sh + Vector2(0, 8), 4.0, 5, 0.45), spec.emblem, false, 0.2)
+				var y := mid.lerp(waist, 0.25 + i * 0.25)
+				draw_line(y + ax * sw * 0.7, y - ax * sw * 0.7, tone(look.stripes), 1.6, true)
+		if look.has("emblem"):
+			paper(star(mid.lerp(waist, 0.35), 4.5, 5, 0.45), look.emblem, false, 0.1)
+		if look.has("overalls"):
+			part(PackedVector2Array([mid.lerp(waist, 0.4) + ax * 5.0, mid.lerp(waist, 0.4) - ax * 5.0, hipm - ax * 7.5, hipm + ax * 7.5]), look.overalls)
 		# front leg
-		paper(stroke([hip + Vector2(2, 0), (hip + feet[0]) * 0.5 + Vector2(2, 1), feet[0]], 5.0), legs)
-		paper(ell(feet[0] + Vector2(2, 0), 4.0, 2.2), spec.get("shoes", INK))
-		paper(ell(feet[1] + Vector2(2, 0), 4.0, 2.2), spec.get("shoes", INK))
-		# head
-		paper(circ(head, 7.0), skin)
-		match spec.get("hair", "short"):
+		if not look.has("skirt"):
+			part(limb([j.hip, j.kn, j.ft + Vector2(0, -3)], [10.0 * thick, 7.0 * thick, 5.2 * thick]), legs)
+		else:
+			part(limb([j.hip, j.kn, j.ft + Vector2(0, -3)], [6.0, 5.0, 3.8]), skin)
+		part(PackedVector2Array([j.ft + Vector2(-4, -6), j.ft + Vector2(3, -6), j.ft + Vector2(9, 0), j.ft + Vector2(-4, 0)]), boots)
+		if look.has("skirt"):
+			part(PackedVector2Array([hipm + ax * 9.0 + Vector2(0, -3), hipm - ax * 9.0 + Vector2(0, -3), j.hip + Vector2(14, 20), j.hip_b + Vector2(-12, 22)]), look.skirt)
+		# neck and head
+		var head: Vector2 = j.head
+		part(limb([mid + (mid - hipm).normalized() * 1.0, head + Vector2(0, 6)], [5.0, 4.6]), skin)
+		var hr: float = look.get("head", 7.2)
+		var face := PackedVector2Array()
+		for i in 20:
+			var a := TAU * i / 20.0
+			var r := hr
+			# a jaw: the face juts a little forward and down
+			if a > 0.2 and a < 1.6:
+				r += 1.6 * sin((a - 0.2) / 1.4 * PI)
+			face.append(head + Vector2(cos(a) * r * 0.92, sin(a) * r))
+		part(face, skin, 1.0)
+		match look.get("hair", "short"):
 			"short":
-				paper(PackedVector2Array([head + Vector2(-7, -1), head + Vector2(-5, -7), head + Vector2(3, -8), head + Vector2(7, -3), head + Vector2(1, -4)]), spec.get("hair_col", INK))
-			"mohawk":
-				for i in 5:
-					paper(tri(head + Vector2(-6 + i * 3, -5), head + Vector2(-8 + i * 3.5, -16 + abs(i - 2) * 2.0), head + Vector2(-3 + i * 3, -6)), spec.get("hair_col", RISO))
+				part(PackedVector2Array([head + Vector2(-hr, 1), head + Vector2(-hr + 1, -hr * 0.8), head + Vector2(0, -hr - 1.5), head + Vector2(hr * 0.8, -hr * 0.6), head + Vector2(2, -hr * 0.4), head + Vector2(-2, 0)]), look.get("hair_col", INK), 0.8)
 			"long":
-				paper(PackedVector2Array([head + Vector2(-8, 8), head + Vector2(-8, -4), head + Vector2(0, -9), head + Vector2(7, -4), head + Vector2(2, -3), head + Vector2(-3, 10)]), spec.get("hair_col", INK))
-			"bald":
-				pass
-		match spec.get("hat", ""):
-			"cap":
-				paper(PackedVector2Array([head + Vector2(-7, -2), head + Vector2(-5, -8), head + Vector2(5, -8), head + Vector2(7, -2)]), spec.get("hat_col", RED))
-				paper(rect(head + Vector2(9, -2.5), 8, 2.2), spec.get("hat_col", RED))
+				part(PackedVector2Array([head + Vector2(-hr - 2, 14), head + Vector2(-hr - 2, -2), head + Vector2(0, -hr - 2), head + Vector2(hr, -hr * 0.4), head + Vector2(1, -hr * 0.5), head + Vector2(-3, 4), head + Vector2(-4, 16)]), look.get("hair_col", INK), 0.8)
+			"mohawk":
+				for i in 6:
+					part(tri(head + Vector2(-6 + i * 2.4, -hr + 2), head + Vector2(-9 + i * 3.2, -hr - 12 + abs(i - 2.5) * 1.5), head + Vector2(-3 + i * 2.4, -hr + 1)), look.get("hair_col", INK), 0.5)
+		match look.get("hat", ""):
+			"helmet":
+				part(PackedVector2Array([head + Vector2(-hr - 1, 1), head + Vector2(-hr, -hr * 0.7), head + Vector2(0, -hr - 2), head + Vector2(hr, -hr * 0.6), head + Vector2(hr + 6, -1), head + Vector2(hr - 1, 0)]), look.get("hat_col", INK), 1.0)
+			"beanie":
+				part(PackedVector2Array([head + Vector2(-hr - 1, -1), head + Vector2(-hr + 1, -hr), head + Vector2(2, -hr - 3), head + Vector2(hr, -hr * 0.4), head + Vector2(hr, -1)]), look.get("hat_col", INK), 0.8)
 			"straw":
-				paper(ell(head + Vector2(0, -4), 14, 3.0), MUSTARD)
-				paper(ell(head + Vector2(0, -7), 7, 5.0), MUSTARD)
-		if spec.has("mask"):
-			paper(rect(head + Vector2(2, -1), 13, 4), spec.mask, false, 0.2)
-		var face: String = spec.get("face", "")
-		if face == "scream":
-			paper(ell(head + Vector2(3, 3), 1.8, 2.8), INK, false, 0.1)
-		dot(head + Vector2(3.5, -1), 0.9)
+				part(ell(head + Vector2(0, -hr * 0.6), hr * 2.0, 2.6), MUSTARD, 0.6)
+				part(ell(head + Vector2(0, -hr * 0.95), hr * 0.95, hr * 0.6), MUSTARD, 0.6)
+		if look.has("mask"):
+			part(PackedVector2Array([head + Vector2(-hr + 2, -3), head + Vector2(hr + 1, -4), head + Vector2(hr + 1, 0), head + Vector2(-hr + 2, 1)]), look.mask, 0.4)
+		# face: eye, brow, mouth
+		var ex := head + Vector2(hr * 0.42, -1.5)
+		match look.get("face", "grit"):
+			"scream":
+				draw_circle(ex, 1.3, Color.WHITE if style != "silhouette" else Color("#ffe27a"), true, -1.0, true)
+				part(ell(head + Vector2(hr * 0.5, 4), 1.7, 2.6), Color(0.15, 0.02, 0.05), 0.3)
+			"dazed":
+				ink(ex + Vector2(-1.2, -1.2), ex + Vector2(1.2, 1.2), 0.9)
+				ink(ex + Vector2(1.2, -1.2), ex + Vector2(-1.2, 1.2), 0.9)
+			_:
+				dot(ex, 0.9)
+				ink(ex + Vector2(-2.2, -2.0), ex + Vector2(1.8, -1.4), 1.0)
+				ink(head + Vector2(hr * 0.35, 4.2), head + Vector2(hr * 0.85, 3.6), 0.8)
 		# front arm
-		paper(stroke([sh + Vector2(2, 1), (sh + hands[0]) * 0.5 + Vector2(1, 3), hands[0]], 4.2), top)
-		paper(circ(hands[0], spec.get("fist", 2.8)), spec.get("glove", skin))
+		part(limb([j.sh, j.el, j.ha], [7.4 * thick, 6.0 * thick, 4.8 * thick]), arm_col)
+		part(circ(j.ha, look.get("fist", 3.6) * thick), hand_col, 0.8)
+
+	# ---------- furniture, for the flat-pack manual ----------
+
+	## an isometric box (a board or a cabinet) at base point o: w along x-axis, d along depth, h up
+	func iso_box(o: Vector2, w: float, d: float, h: float, shade := true) -> void:
+		var X := Vector2(0.87, 0.5)
+		var Z := Vector2(-0.87, 0.5)
+		var U := Vector2(0, -1)
+		var a := o
+		var b := o + X * w
+		var c := o + X * w + Z * d
+		var e := o + Z * d
+		var top := [a + U * h, b + U * h, c + U * h, e + U * h]
+		var line := Color("#1a1a1a")
+		# visible faces: top, front-left (along Z at x=w? ) — draw the three faces facing the viewer
+		var f_top := PackedVector2Array(top)
+		var f_right := PackedVector2Array([b, c, c + U * h, b + U * h])
+		var f_left := PackedVector2Array([e, c, c + U * h, e + U * h])
+		draw_colored_polygon(f_right, Color("#e9eef4") if shade else Color.WHITE)
+		draw_colored_polygon(f_left, Color.WHITE)
+		draw_colored_polygon(f_top, Color("#f6f8fb"))
+		for f in [f_right, f_left, f_top]:
+			var loop: PackedVector2Array = f.duplicate()
+			loop.append(f[0])
+			draw_polyline(loop, line, 0.8, true)
+
+	func dowel(p: Vector2, ang := -PI * 0.5, len := 7.0) -> void:
+		var d := Vector2(cos(ang), sin(ang))
+		draw_line(p, p + d * len, Color("#1a1a1a"), 2.6, true)
+		draw_line(p, p + d * len, Color.WHITE, 1.2, true)
+
+	func screw(p: Vector2) -> void:
+		draw_circle(p, 2.0, Color.WHITE, true, -1.0, true)
+		draw_circle(p, 2.0, Color("#1a1a1a"), false, 0.7, true)
+		draw_line(p + Vector2(-1.2, 0), p + Vector2(1.2, 0), Color("#1a1a1a"), 0.6)
+		draw_line(p + Vector2(0, 2), p + Vector2(0, 9), Color("#1a1a1a"), 0.9)
+		for i in 3:
+			draw_line(p + Vector2(-1, 4 + i * 2), p + Vector2(1, 5 + i * 2), Color("#1a1a1a"), 0.5)
+
+	func callout(p: Vector2, text: String) -> void:
+		draw_string(Pub.font("hd/nunito-800"), p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color("#1a1a1a"))
+
+	func move_arrow(a: Vector2, b: Vector2) -> void:
+		draw_line(a, b, Color("#1a1a1a"), 0.8, true)
+		var d := (b - a).normalized()
+		draw_colored_polygon(PackedVector2Array([b, b - d * 4.0 + d.orthogonal() * 2.0, b - d * 4.0 - d.orthogonal() * 2.0]), Color("#1a1a1a"))
+
+	func _flatpack(lo: float, hi: float) -> void:
+		# Defend: a bookcase in exploded view; the top shelf drops onto its dowels
+		# and the back panel slides in from the side
+		var X := Vector2(0.87, 0.5)
+		var U := Vector2(0, -1)
+		var o := Vector2(64, 60)
+		var W := 46.0
+		iso_box(o, 3, 14, 52)                       # far side
+		iso_box(o, W, 14, 3)                        # bottom
+		iso_box(o + U * 24.0, W, 14, 2.5)           # middle shelf
+		iso_box(o + X * (W - 3.0), 3, 14, 52)       # near side
+		# the top, lifted, with dowels waiting below it
+		var top := o + U * 70.0
+		iso_box(top, W, 14, 3)
+		for t in [0.15, 0.85]:
+			dowel(o + X * (W * t) + U * 54.0, -PI * 0.5, 6.0)
+		move_arrow(top + X * (W * 0.5) + Vector2(-6, 10), top + X * (W * 0.5) + Vector2(-6, 18))
+		# back panel, sliding in from the right
+		var bp := PackedVector2Array([Vector2(150, 12), Vector2(190, 35), Vector2(190, 87), Vector2(150, 64)])
+		draw_colored_polygon(bp, Color("#f2f5f9"))
+		var loop := bp.duplicate()
+		loop.append(bp[0])
+		draw_polyline(loop, Color("#1a1a1a"), 0.8, true)
+		move_arrow(Vector2(146, 46), Vector2(124, 46))
+		callout(Vector2(166, 54), "B")
+		callout(Vector2(56, 40), "A")
+		# parts callouts
+		draw_circle(Vector2(24, 30), 12, Color("#1a1a1a"), false, 0.6, true)
+		screw(Vector2(21, 22))
+		callout(Vector2(26, 37), "8×")
+		draw_circle(Vector2(24, 70), 12, Color("#1a1a1a"), false, 0.6, true)
+		dowel(Vector2(20, 76), -PI * 0.5, 9.0)
+		callout(Vector2(26, 77), "4×")
+		draw_line(Vector2(lo, 92), Vector2(hi, 92), Color("#1a1a1a"), 0.5)
 
 	func _slugger(lo: float, hi: float) -> void:
-		# the sports page: a batter connects, the stands behind
+		# the sports page: a batter connects, catcher crouched behind, the stands beyond
 		for row in 4:
 			for i in 30:
 				var x := lo + i * 9.0 + (row % 2) * 4.5
-				dot(Vector2(x, 20 + row * 9), 2.6, Color(0.82, 0.82, 0.82))
-				paper(rect(Vector2(x, 26 + row * 9), 6, 5), Color(0.78, 0.78, 0.78).lightened(((i * 7 + row) % 5) * 0.04), false, 0.1)
-		paper(PackedVector2Array([Vector2(lo - 4, 58), Vector2(hi + 4, 58), Vector2(hi + 4, 64), Vector2(lo - 4, 64)]), Color(0.35, 0.35, 0.35), false, 0.1)
-		ground(lo, hi, Color(0.62, 0.62, 0.62))
-		push(Vector2(92, GROUND), 1.05)
-		person({"top": Color(0.18, 0.18, 0.2), "legs": Color(0.3, 0.3, 0.32), "stripes": Color(0.55, 0.55, 0.55), "hat": "cap", "hat_col": INK, "hair": "bald",
-			"hands": [Vector2(16, -38), Vector2(12, -36)], "feet": [Vector2(14, 0), Vector2(-10, 0)], "lean": 4.0})
-		# the bat, mid-swing, with a blur behind
-		paper(stroke([Vector2(14, -37), Vector2(30, -50), Vector2(44, -60)], 4.0, 0.0, 0.4), INK)
+				dot(Vector2(x, 14 + row * 9), 2.6, Color(0.82, 0.82, 0.82))
+				paper(rect(Vector2(x, 20 + row * 9), 6, 5), Color(0.78, 0.78, 0.78).lightened(((i * 7 + row) % 5) * 0.04), false, 0.1)
+		draw_rect(Rect2(Vector2(lo, 50), Vector2(hi - lo, 4)), tone(Color(0.3, 0.3, 0.3)))
+		ground(lo, hi, Color(0.55, 0.55, 0.55))
+		# catcher, crouched
+		figure({"head": Vector2(34, 60), "sh": Vector2(38, 70), "sh_b": Vector2(30, 70), "el": Vector2(46, 76), "el_b": Vector2(24, 78),
+			"ha": Vector2(52, 72), "ha_b": Vector2(28, 84), "hip": Vector2(34, 82), "hip_b": Vector2(28, 82), "kn": Vector2(44, 84), "kn_b": Vector2(20, 86),
+			"ft": Vector2(38, 92), "ft_b": Vector2(24, 92)}, {"top": Color(0.4, 0.4, 0.42), "legs": Color(0.4, 0.4, 0.42), "hat": "helmet", "hair": "", "head": 6.2, "fist": 5.0})
+		# the batter, follow-through
+		figure({"head": Vector2(104, 26), "sh": Vector2(106, 38), "sh_b": Vector2(96, 38), "el": Vector2(116, 34), "el_b": Vector2(108, 30),
+			"ha": Vector2(118, 26), "ha_b": Vector2(114, 25), "hip": Vector2(102, 62), "hip_b": Vector2(96, 62), "kn": Vector2(114, 76), "kn_b": Vector2(88, 76),
+			"ft": Vector2(120, 92), "ft_b": Vector2(82, 92)}, {"top": Color(0.88, 0.88, 0.9), "legs": Color(0.88, 0.88, 0.9), "stripes": Color(0.35, 0.35, 0.4),
+			"hat": "helmet", "hat_col": Color(0.15, 0.15, 0.18), "hair": "", "boots": INK, "build": 13.0})
+		part(limb([Vector2(116, 26), Vector2(98, 14), Vector2(80, 6)], [3.0, 4.2, 5.4]), Color(0.25, 0.25, 0.25))
 		for i in 3:
-			draw_arc(Vector2(10, -34), 26.0 + i * 5.0, -2.4, -1.1, 12, Color(1, 1, 1, 0.35), 1.2, true)
-		pop()
-		# the ball, leaving
-		paper(circ(Vector2(178, 30), 4.2), INK, false)
+			draw_arc(Vector2(110, 32), 26.0 + i * 5.0, PI * 0.85, PI * 1.45, 12, Color(1, 1, 1, 0.4), 1.2, true)
+		part(circ(Vector2(176, 22), 3.4), Color(0.95, 0.95, 0.95), 0.6)
 		for i in 4:
-			draw_line(Vector2(158 - i * 5, 38 + i * 2), Vector2(168 - i * 5, 34 + i * 2), Color(1, 1, 1, 0.5), 1.0, true)
+			draw_line(Vector2(158 - i * 5, 30 + i * 2), Vector2(168 - i * 5, 26 + i * 2), Color(1, 1, 1, 0.5), 1.0, true)
 
 	func _hero_jab(lo: float, hi: float) -> void:
 		ground(lo, hi, Color("#5aa0e8"))
-		# a goon knocked flying
-		push(Vector2(160, GROUND - 6), 1.0, false, 0.5)
-		person({"top": Color("#f2f2f2"), "stripes": INK, "legs": Color("#6b4a2e"), "hair": "bald", "hat": "cap", "hat_col": INK,
-			"hands": [Vector2(-6, -52), Vector2(10, -50)], "feet": [Vector2(10, -4), Vector2(-8, 2)]})
-		pop()
-		paper(star(Vector2(130, 48), 12, 10, 0.5), WHITE)
-		paper(star(Vector2(130, 48), 6, 10, 0.5), MUSTARD, false)
-		# the hero, fist forward
-		push(Vector2(74, GROUND), 1.15)
-		person({"top": Color("#2f6fe4"), "legs": Color("#2f6fe4"), "cape": RED, "emblem": MUSTARD, "mask": INK, "glove": RED, "shoes": RED,
-			"hands": [Vector2(36, -38), Vector2(-12, -30)], "feet": [Vector2(14, 0), Vector2(-12, 0)], "lean": 5.0, "fist": 4.2})
-		pop()
+		# the goon, knocked flying, hat off
+		figure({"head": Vector2(170, 40), "sh": Vector2(166, 48), "sh_b": Vector2(174, 50), "el": Vector2(158, 40), "el_b": Vector2(186, 42),
+			"ha": Vector2(154, 32), "ha_b": Vector2(192, 34), "hip": Vector2(176, 70), "hip_b": Vector2(182, 68), "kn": Vector2(166, 82), "kn_b": Vector2(196, 80),
+			"ft": Vector2(160, 92), "ft_b": Vector2(206, 88)}, {"top": Color("#f4f4f4"), "stripes": INK, "legs": Color("#6b4a2e"), "hat": "beanie", "hat_col": INK, "hair": "", "face": "dazed", "build": 12.0})
+		paper(star(Vector2(146, 40), 13, 10, 0.5), WHITE)
+		paper(star(Vector2(146, 40), 6.5, 10, 0.5), MUSTARD, false)
+		# the hero, lunging, fist out, cape snapping behind
+		figure({"head": Vector2(84, 24), "sh": Vector2(92, 34), "sh_b": Vector2(78, 34), "el": Vector2(112, 36), "el_b": Vector2(68, 44),
+			"ha": Vector2(134, 38), "ha_b": Vector2(74, 52), "hip": Vector2(84, 60), "hip_b": Vector2(76, 60), "kn": Vector2(102, 72), "kn_b": Vector2(62, 76),
+			"ft": Vector2(110, 92), "ft_b": Vector2(48, 92)}, {"top": Color("#2f6fe4"), "legs": Color("#2f6fe4"), "cape": RED, "emblem": MUSTARD, "mask": INK,
+			"gloves": RED, "boots": RED, "build": 17.0, "thick": 1.25, "fist": 4.4, "hair_col": INK})
 
 	func _blood_price(lo: float, hi: float) -> void:
 		# a towering hooded figure, eyes glowing, reaches for its price
-		var c := Vector2(150, 96)
-		paper(PackedVector2Array([c + Vector2(-34, 0), c + Vector2(-20, -60), c + Vector2(-8, -86), c + Vector2(8, -88), c + Vector2(22, -60), c + Vector2(40, 0)]), INK)
-		paper(ell(c + Vector2(0, -74), 12, 14), INK)
+		var c := Vector2(156, 96)
+		part(PackedVector2Array([c + Vector2(-34, 0), c + Vector2(-20, -60), c + Vector2(-10, -84), c + Vector2(8, -88), c + Vector2(22, -62), c + Vector2(40, 0)]), INK, 2.0)
+		part(ell(c + Vector2(0, -74), 12, 14), INK, 2.0)
 		dot(c + Vector2(-5, -74), 2.0)
 		dot(c + Vector2(5, -74), 2.0)
-		paper(stroke([c + Vector2(-16, -52), c + Vector2(-38, -44), c + Vector2(-52, -46)], 5.0, 0.3), INK)
+		part(limb([c + Vector2(-16, -54), c + Vector2(-38, -46), c + Vector2(-56, -50)], [8.0, 6.0, 3.0]), INK, 1.4)
 		for f in 4:
-			paper(stroke([c + Vector2(-52, -46), c + Vector2(-60 - f * 1.5, -50 + f * 2.5)], 1.6, 0.6), INK)
-		# the heroine recoils, hand at her throat
-		push(Vector2(60, GROUND + 2), 1.2, true)
-		person({"top": PULP_RED, "dress": PULP_RED, "legs": INK, "hair": "long", "face": "scream",
-			"hands": [Vector2(4, -46), Vector2(16, -30)], "feet": [Vector2(4, 0), Vector2(-8, 0)], "lean": -4.0})
-		pop()
+			part(limb([c + Vector2(-56, -50), c + Vector2(-62 - f * 1.5, -54 + f * 3)], [1.8, 1.0]), INK, 0.4)
+		# the heroine recoils, arm thrown up, hair flying
+		figure({"head": Vector2(62, 30), "sh": Vector2(66, 40), "sh_b": Vector2(56, 40), "el": Vector2(76, 30), "el_b": Vector2(46, 48),
+			"ha": Vector2(74, 20), "ha_b": Vector2(38, 52), "hip": Vector2(60, 62), "hip_b": Vector2(54, 62), "kn": Vector2(64, 78), "kn_b": Vector2(48, 78),
+			"ft": Vector2(70, 92), "ft_b": Vector2(42, 92)}, {"top": PULP_RED, "skirt": PULP_RED, "legs": SKIN, "hair": "long", "hair_col": Color("#3a1a0a"),
+			"face": "scream", "build": 9.0, "thick": 0.85, "sleeves": SKIN})
 
 	func _punk(lo: float, hi: float) -> void:
 		ground(lo, hi, Color(0.07, 0.07, 0.07))
-		# a punk mid-leap, guitar raised to smash
-		push(Vector2(132, GROUND - 14), 1.15)
-		person({"top": INK, "legs": Color(0.2, 0.2, 0.2), "hair": "mohawk", "hair_col": INK,
-			"hands": [Vector2(10, -56), Vector2(4, -58)], "feet": [Vector2(12, -2), Vector2(-14, -10)], "lean": -3.0})
-		paper(stroke([Vector2(8, -56), Vector2(-6, -76)], 2.6), INK)
-		paper(PackedVector2Array([Vector2(-6, -76), Vector2(-18, -86), Vector2(-24, -80), Vector2(-16, -70), Vector2(-20, -62), Vector2(-10, -64)]), WHITE)
-		pop()
-		# scrawled X's and stars
-		for x in [[Vector2(36, 30), 9.0], [Vector2(64, 60), 6.0], [Vector2(186, 36), 7.0]]:
-			draw_line(x[0] - Vector2(x[1], x[1]), x[0] + Vector2(x[1], x[1]), Color.BLACK if x[0].x < 90 else Color.WHITE, 2.4, true)
-			draw_line(x[0] + Vector2(-x[1], x[1]), x[0] + Vector2(x[1], -x[1]), Color.BLACK if x[0].x < 90 else Color.WHITE, 2.4, true)
-
-	func _flatpack(lo: float, hi: float) -> void:
-		ground(lo, hi, WHITE)
-		# the flat-pack man holds up a shelf board; arrows bounce off it
-		push(Vector2(84, GROUND), 1.1)
-		person({"top": WHITE, "legs": WHITE, "skin": WHITE, "hair": "bald", "shoes": WHITE,
-			"hands": [Vector2(16, -40), Vector2(14, -28)], "feet": [Vector2(6, 0), Vector2(-8, 0)]})
-		pop()
-		paper(PackedVector2Array([Vector2(104, 22), Vector2(118, 18), Vector2(122, 90), Vector2(108, 92)]), WHITE)
-		for y in [30.0, 50.0, 70.0]:
-			draw_circle(Vector2(113, y), 1.5, Color("#1a1a1a"), false, 0.7, true)
-		arrow(Vector2(170, 40), PI + 0.06)
-		arrow(Vector2(162, 66), PI - 0.08)
-		arrow(Vector2(140, 14), -0.8 + PI)
-		# the Allen key on the floor, and a "2×" callout
-		draw_polyline(PackedVector2Array([Vector2(36, 90), Vector2(36, 84), Vector2(54, 82)]), Color("#1a1a1a"), 1.6, true)
-		draw_circle(Vector2(190, 82), 9, Color("#1a1a1a"), false, 0.8, true)
-		draw_string(Pub.font("hd/nunito-800"), Vector2(183, 86), "2×", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color("#1a1a1a"))
+		# a punk mid-leap, guitar swung overhead
+		figure({"head": Vector2(140, 22), "sh": Vector2(144, 32), "sh_b": Vector2(134, 32), "el": Vector2(150, 18), "el_b": Vector2(128, 18),
+			"ha": Vector2(146, 6), "ha_b": Vector2(134, 6), "hip": Vector2(140, 56), "hip_b": Vector2(134, 56), "kn": Vector2(156, 62), "kn_b": Vector2(122, 70),
+			"ft": Vector2(160, 78), "ft_b": Vector2(110, 80)}, {"top": INK, "sleeves": INK, "legs": Color(0.85, 0.85, 0.85), "hair": "mohawk", "hair_col": INK,
+			"boots": INK, "build": 12.0})
+		# the guitar: neck in the hands, body flung back
+		part(limb([Vector2(140, 6), Vector2(118, -2)], [3.0, 3.0]), INK, 0.4)
+		part(PackedVector2Array([Vector2(118, -2), Vector2(108, -8), Vector2(98, -4), Vector2(100, 6), Vector2(94, 12), Vector2(100, 22), Vector2(112, 18), Vector2(118, 8)]), WHITE, 1.2)
+		draw_circle(Vector2(106, 8), 2.4, Color(0.07, 0.07, 0.07), true, -1.0, true)
+		# rips in the jeans, scrawled X's
+		for x in [[Vector2(40, 30), 9.0], [Vector2(64, 60), 6.0], [Vector2(186, 30), 7.0]]:
+			var col := Color.BLACK if x[0].x < 90 else Color.WHITE
+			draw_line(x[0] - Vector2(x[1], x[1]), x[0] + Vector2(x[1], x[1]), col, 2.4, true)
+			draw_line(x[0] + Vector2(-x[1], x[1]), x[0] + Vector2(x[1], -x[1]), col, 2.4, true)
 
 	func _farmer_wind(lo: float, hi: float) -> void:
 		ground(lo, hi, pal[3])
-		# wind face in a cloud
+		# a wind face in a cloud
 		var w := Vector2(22, 24)
 		for b in [[Vector2(-4, -6), 11.0], [Vector2(8, -10), 10.0], [Vector2(-8, 8), 10.0], [Vector2(4, 10), 9.0], [Vector2(0, 0), 13.0]]:
 			paper(circ(w + b[0], b[1]), WHITE, false)
@@ -750,18 +927,18 @@ class Canvas extends Control:
 		dot(w + Vector2(6, -4), 1.2, INK)
 		paper(ell(w + Vector2(15, 2), 3.0, 2.2), INK, false)
 		for i in 4:
-			draw_line(w + Vector2(20, -2 + i * 3), w + Vector2(60 + i * 8, -6 + i * 5), line_col(), 0.8, true)
+			draw_line(w + Vector2(20, -2 + i * 3), w + Vector2(66 + i * 8, -6 + i * 5), line_col(), 0.8, true)
 		# a weathervane rooster
-		paper(stroke([Vector2(186, 92), Vector2(186, 40)], 1.6), INK)
-		paper(PackedVector2Array([Vector2(178, 36), Vector2(184, 28), Vector2(192, 30), Vector2(196, 36), Vector2(188, 40)]), INK)
-		# the farmer, holding his hat on; cards blow past
-		push(Vector2(120, GROUND), 1.1, true)
-		person({"top": Color("#7a5a3a"), "legs": DENIM, "hat": "straw", "hair": "bald",
-			"hands": [Vector2(2, -60), Vector2(-14, -30)], "feet": [Vector2(6, 0), Vector2(-8, 0)], "lean": 4.0})
-		pop()
-		card_piece(Vector2(80, 36), -0.5, true, pal[0])
-		card_piece(Vector2(160, 30), 0.6, false, pal[0])
-		card_piece(Vector2(150, 62), -0.3, true, pal[0])
+		part(limb([Vector2(190, 92), Vector2(190, 40)], [2.0, 2.0]), INK, 0.4)
+		part(PackedVector2Array([Vector2(180, 36), Vector2(186, 26), Vector2(194, 28), Vector2(200, 36), Vector2(190, 40)]), INK, 0.6)
+		# the farmer leans into the wind, holding his hat on
+		figure({"head": Vector2(128, 28), "sh": Vector2(126, 40), "sh_b": Vector2(136, 40), "el": Vector2(118, 30), "el_b": Vector2(144, 52),
+			"ha": Vector2(124, 20), "ha_b": Vector2(146, 62), "hip": Vector2(132, 64), "hip_b": Vector2(138, 64), "kn": Vector2(124, 78), "kn_b": Vector2(144, 78),
+			"ft": Vector2(118, 92), "ft_b": Vector2(150, 92)}, {"top": Color("#e9e2cf"), "overalls": DENIM, "legs": DENIM, "hat": "straw", "hair": "",
+			"boots": Color("#3a2414"), "build": 12.0})
+		card_piece(Vector2(82, 40), -0.5, true, pal[0])
+		card_piece(Vector2(160, 22), 0.6, false, pal[0])
+		card_piece(Vector2(100, 70), -0.3, true, pal[0])
 
 	func _cheap_shot(lo: float, hi: float) -> void:
 		sun(Vector2(110, 18), 10)
