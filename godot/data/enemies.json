@@ -1,0 +1,30 @@
+{
+  "_note": "Enemies cycle through 'pattern' one intent per turn. An intent may combine attack (with hits), block, strength, weak (applied to you) and one text edit. Edits: blackout, invert_verb, typo, censor, copy. HP and numbers are placeholders.",
+  "enemies": {
+    "redactor": {
+      "name": "Redactor", "role": "Common", "hp": 30,
+      "pattern": [ { "attack": 6 }, { "edit": "blackout" }, { "attack": 4, "block": 4 } ],
+      "drops": { "tools": { "mute": 1 } }
+    },
+    "inverter": {
+      "name": "Inverter", "role": "Common", "hp": 34,
+      "pattern": [ { "edit": "invert_verb" }, { "attack": 8 }, { "attack": 5, "block": 5 } ],
+      "drops": { "tools": { "invert": 1 } }
+    },
+    "typo_imp": {
+      "name": "Typo Imp", "role": "Common", "hp": 14,
+      "pattern": [ { "edit": "typo", "attack": 3 }, { "attack": 5 } ],
+      "drops": { "chunk": { "type": "amount", "id": 9 } }
+    },
+    "censor": {
+      "name": "Censor", "role": "Elite", "hp": 70,
+      "pattern": [ { "edit": "censor" }, { "attack": 10 }, { "attack": 6, "hits": 2 }, { "block": 12, "strength": 2 } ],
+      "drops": { "chunk": { "type": "condition", "id": "first_card", "neg": true } }
+    },
+    "plagiarist": {
+      "name": "Plagiarist", "role": "Boss", "hp": 150,
+      "pattern": [ { "attack": 12 }, { "block": 10, "strength": 1 }, { "edit": "copy" } ],
+      "drops": { "copiedCard": true }
+    }
+  }
+}

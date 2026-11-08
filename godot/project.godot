@@ -1,0 +1,31 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+config/name="Cut the Deck"
+config/description="A roguelike deckbuilder where you cut up card text and glue it back together."
+run/main_scene="res://game/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+
+[autoload]
+
+Game="*res://game/game.gd"
+
+[gui]
+
+theme/custom_font="res://fonts/hd/nunito-600.woff2"

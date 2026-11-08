@@ -1,0 +1,42 @@
+{
+  "_note": "Chunk vocabulary. Every id here can appear in a card clause. 'invert' names the chunk this one flips to. Weights feed the energy cost (see rules.json > cost). All numbers are placeholders.",
+  "verb": {
+    "deal":        { "label": "Deal",           "defaultTarget": "enemy", "polarity": "harm", "weight": 0,    "amountScale": 0.2,  "invert": "heal" },
+    "heal":        { "label": "Heal",           "defaultTarget": "self",  "polarity": "help", "weight": 0.25, "amountScale": 0.2,  "invert": "deal" },
+    "block":       { "label": "Block",          "defaultTarget": "self",  "polarity": "help", "weight": 0,    "amountScale": 0.2,  "invert": "lose_block" },
+    "lose_block":  { "label": "Lose Block",     "defaultTarget": "self",  "polarity": "harm", "weight": 0,    "amountScale": 0.2,  "invert": "block" },
+    "draw":        { "label": "Draw",           "defaultTarget": "self",  "polarity": "help", "weight": 0,    "amountScale": 0.5,  "invert": "discard" },
+    "discard":     { "label": "Discard",        "defaultTarget": "self",  "polarity": "harm", "weight": 0,    "amountScale": 0.5,  "invert": "draw" },
+    "energy":      { "label": "Gain Energy",    "defaultTarget": "self",  "polarity": "help", "weight": 0,    "amountScale": 0.6,  "invert": "lose_energy" },
+    "lose_energy": { "label": "Lose Energy",    "defaultTarget": "self",  "polarity": "harm", "weight": 0,    "amountScale": 0.6,  "invert": "energy" },
+    "weak":        { "label": "Apply Weak",     "defaultTarget": "enemy", "polarity": "harm", "weight": 0.25, "amountScale": 0.25, "invert": "strength" },
+    "strength":    { "label": "Apply Strength", "defaultTarget": "self",  "polarity": "help", "weight": 0.25, "amountScale": 0.3,  "invert": "weak" }
+  },
+  "amount": {
+    "min": 0,
+    "max": 9,
+    "invertPivot": 10,
+    "xInvertsTo": 1
+  },
+  "repeat": {
+    "once":   { "label": "once",        "hits": 1, "invert": "twice" },
+    "twice":  { "label": "twice",       "hits": 2, "invert": "once" },
+    "thrice": { "label": "three times", "hits": 3, "invert": "once" }
+  },
+  "target": {
+    "enemy":  { "label": "an enemy",       "side": "enemy", "weight": 0,     "invert": "self" },
+    "all":    { "label": "ALL enemies",    "side": "enemy", "weight": 1,     "invert": "enemy" },
+    "random": { "label": "a random enemy", "side": "enemy", "weight": -0.25, "invert": "all" },
+    "self":   { "label": "yourself",       "side": "self",  "weight": 0,     "invert": "enemy" }
+  },
+  "condition": {
+    "has_block":  { "if": "if you have Block",           "unless": "unless you have Block",           "weight": -0.5 },
+    "enemy_weak": { "if": "if the enemy is Weak",        "unless": "unless the enemy is Weak",        "weight": -0.5 },
+    "first_card": { "if": "if this is your first card",  "unless": "unless this is your first card",  "weight": -0.5 }
+  },
+  "trigger": {
+    "played":   { "label": "",               "weight": 0,   "invert": "drawn" },
+    "drawn":    { "label": "When drawn",     "weight": 0.5, "invert": "played" },
+    "end_turn": { "label": "At end of turn", "weight": 0,   "invert": "drawn" }
+  }
+}

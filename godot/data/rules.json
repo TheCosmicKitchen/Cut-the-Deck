@@ -1,0 +1,37 @@
+{
+  "_note": "Tunable rules. Invariants (Spent, no mid-turn reshuffle, triggers fire once, no card creation) are engine code, not settings here. All numbers are placeholders.",
+  "player": { "hp": 60, "energyPerTurn": 3, "handSize": 5 },
+  "cost": {
+    "_how": "clause weight = verb.weight + verb.amountScale * amount * hits + target.weight + condition.weight + trigger.weight. A clause that hurts you (or helps an enemy) counts drawbackFactor times its weight. Card cost = round(sum), never below 0. X amounts spend all remaining energy on top.",
+    "drawbackFactor": -0.5
+  },
+  "status": { "weakDamageMultiplier": 0.75, "amountCap": 99 },
+  "safetyNetResolutions": 1000,
+  "ink": { "start": 3, "perFight": 3, "perElite": 5, "workshopBonus": 3 },
+  "clipboardSize": 8,
+  "workshopTools": {
+    "scissors": { "ink": 1 },
+    "glue":     { "ink": 1 },
+    "mute":     { "ink": 1 },
+    "invert":   { "ink": 2 },
+    "merge":    { "ink": 3 },
+    "shred":    { "ink": -2 }
+  },
+  "combatEdits": {
+    "_how": "Quick edits in a fight: one tap, applied at once, no clipboard. They last until the fight ends.",
+    "tools": { "mute": { "energy": 1 }, "invert": { "energy": 1 } },
+    "lasts": "fight"
+  },
+  "maxClauses": 3,
+  "rewardChoices": 3,
+  "run": [
+    { "type": "fight",    "enemies": ["redactor"] },
+    { "type": "fight",    "enemies": ["typo_imp", "typo_imp"] },
+    { "type": "workshop" },
+    { "type": "fight",    "enemies": ["inverter"] },
+    { "type": "fight",    "enemies": ["redactor", "typo_imp"] },
+    { "type": "elite",    "enemies": ["censor"] },
+    { "type": "workshop" },
+    { "type": "boss",     "enemies": ["plagiarist"] }
+  ]
+}
