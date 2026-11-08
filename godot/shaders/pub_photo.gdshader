@@ -38,7 +38,7 @@ void fragment() {
 	float alpha = 1.0;
 	if (pub == 0) {
 		// halftone: dot size from darkness on a 45 degree grid
-		float cellsz = 3.2;
+		float cellsz = 2.1;
 		vec2 r = vec2(p.x + p.y, p.y - p.x) * 0.7071 / cellsz;
 		vec2 f = fract(r) - 0.5;
 		float rad = sqrt(1.0 - clamp(l * 1.1 - 0.05, 0.0, 1.0)) * 0.62;

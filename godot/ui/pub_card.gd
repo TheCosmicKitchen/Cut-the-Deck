@@ -207,9 +207,23 @@ func _head_0() -> void:  # newspaper
 	var head := _name_label("playfair-900", 25, Pub.INK, true, SZ.x - 32)
 	head.position = Vector2(16, 47)
 	add_child(head)
-	var cap := Pub.label("Staff photographer, at the ballpark.", "playfair-400i", 10, Color(Pub.INK, 0.75))
+	var cap := Pub.label("Onlookers gather as the swing goes wide.", "playfair-400i", 10, Color(Pub.INK, 0.75))
 	cap.position = Vector2(16, ART_Y + ART_H + 1)
 	add_child(cap)
+	var credit := Pub.label("DAILY CUT WIRE PHOTO", "oswald-400", 7, Color(Pub.INK, 0.6))
+	credit.position = Vector2(SZ.x - 13, ART_Y + 2)
+	credit.rotation = PI * 0.5
+	add_child(credit)
+	var by := Pub.label("By a Staff Reporter", "oswald-400", 8, Color(Pub.INK, 0.7))
+	by.position = Vector2(SZ.x - 30 - 90, SZ.y - 48)
+	by.size = Vector2(90, 10)
+	by.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(by)
+	var cont := Pub.label("Continued on A4 ▸", "playfair-400i", 9, Color(Pub.INK, 0.7))
+	cont.position = Vector2(SZ.x - 30 - 110, SZ.y - 26)
+	cont.size = Vector2(110, 12)
+	cont.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(cont)
 
 
 func _head_1() -> void:  # comics: a cover logo, issue box, panels
@@ -234,7 +248,7 @@ func _head_1() -> void:  # comics: a cover logo, issue box, panels
 	var issue := Pub.label("No.1", "bangers", 12, Color.WHITE)
 	issue.position = Vector2(SZ.x - 59, 6)
 	add_child(issue)
-	if main_verb() == "deal":
+	if false:
 		var sfx := Pub.extruded("POW!", "bangers", 26, Color("#ffe14d"), Color("#e3262f"), Pub.INK, 2, 5)
 		sfx.position = Vector2(SZ.x - 92, ART_Y + 6)
 		sfx.rotation = deg_to_rad(12)
@@ -261,6 +275,9 @@ func _head_2() -> void:  # pulp horror: a painted magazine cover
 	c.rotation = deg_to_rad(8)
 	c.pivot_offset = c.size * 0.5
 	add_child(c)
+	var author := Pub.label("by H. P. Scrivener", "playfair-400i", 11, Color("#ffe6a0"))
+	author.position = Vector2(22, ART_Y - 6)
+	add_child(author)
 	var blurb := Pub.label("COMPLETE NOVEL INSIDE!", "anton", 12, Color("#12020a"))
 	blurb.position = Vector2(SZ.x - 168, SZ.y - 30)
 	blurb.rotation = deg_to_rad(-2)
