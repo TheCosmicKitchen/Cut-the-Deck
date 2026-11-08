@@ -12,13 +12,26 @@ node tools/test.mjs            # cost table, fuzz test, 40 autoplayed runs
 node tools/test-tutorial.mjs   # every tutorial step's solution passes its check
 ```
 
+### Godot 4
+
+The repo root is also a Godot 4 project: open Godot 4.3+, **Import**, pick `project.godot`, press F5.
+The GDScript port lives in `godot/` and reads the same `data/` folder, so card and rule changes apply to both builds.
+
+```
+godot --headless --path . -s res://godot/tests/parity.gd   # GDScript engine replays the JS engine exactly
+```
+
+Fights: click a card to play it, click an enemy to target it, `1`–`9` play, `E` ends the turn, Mute/Invert are quick edits.
+Workshop: pick a tool, then a chunk (Scissors, Glue, Mute, Invert) or a card (Merge, Shred). `Esc` clears a tool.
+Not ported yet: tutorial, Sandbox, the Workshop cost preview, dark theme.
+
 ## Layout
 
 | Folder | What's in it | Godot port |
 |---|---|---|
-| `data/` | All content and tuning as JSON: `chunks.json` (vocabulary, inverts, weights), `cards.json`, `enemies.json`, `rules.json` | Load as-is with `JSON.parse_string(FileAccess.get_file_as_string(...))` |
-| `engine/` | The rules as pure functions over plain data. No DOM, no classes, no globals; randomness comes from a seeded RNG stored in state | Port file by file to GDScript (Dictionaries/Arrays map 1:1) |
-| `ui/` | Web front end only: renders state and turns clicks into engine calls. `tutorial.js` holds the tutorial steps as data (card to select, what to highlight, a check, a scripted solution) | Replace with Godot scenes; the tutorial steps port as-is |
+| `data/` | All content and tuning as JSON: `chunks.json` (vocabulary, inverts, weights), `cards.json`, `enemies.json`, `rules.json` | Loaded as-is by `godot/engine/db.gd` |
+| `engine/` | The rules as pure functions over plain data. No DOM, no classes, no globals; randomness comes from a seeded RNG stored in state | Ported to `godot/engine/` (static funcs, Dictionaries/Arrays 1:1) |
+| `ui/` | Web front end only: renders state and turns clicks into engine calls. `tutorial.js` holds the tutorial steps as data (card to select, what to highlight, a check, a scripted solution) | Replaced by `godot/scenes/main.tscn`; the tutorial steps are not ported yet |
 
 Engine files, in dependency order: `rng.js` → `grammar.js` (clauses, cost, invert, text) → `edits.js` (Workshop tools) → `combat.js` (turns, enemies, invariants) → `run.js` (the act) → `fuzz.js` (phase 2 gate).
 
