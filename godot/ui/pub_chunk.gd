@@ -19,6 +19,7 @@ var dest := Pub.NEWS      # publication of the card it sits on
 var look := "printed"
 var max_w := 220.0
 var seed := 0.0
+var light := false   # printed over a dark picture
 var _body: Control
 
 
@@ -29,6 +30,7 @@ func setup(p_slot: String, p_chunk, p_text: String, p_src: int, p_dest: int, opt
 	src = p_src
 	dest = p_dest
 	max_w = opts.get("max_w", 220.0)
+	light = opts.get("light", false)
 	seed = float(abs(hash("%s%s%s" % [p_text, p_slot, opts.get("uid", "")])) % 997)
 	if chunk == null:
 		look = "hole"
@@ -117,7 +119,7 @@ func _build() -> void:
 		sh.add_theme_color_override("font_outline_color", Color("#12020a"))
 		sh.position = Vector2(M + PAD.x + 2, M + PAD.y + 1)
 		_body.add_child(sh)
-	var l := Pub.label(shown, fname, fs, Pub.ink(src, slot))
+	var l := Pub.label(shown, fname, fs, Color("#f6f1e4") if (light and look == "printed") else Pub.ink(src, slot))
 	if src == Pub.PULP:
 		l.add_theme_constant_override("outline_size", 4)
 		l.add_theme_color_override("font_outline_color", Color("#3a0814"))
@@ -146,6 +148,7 @@ func _draw_under(c: Control, inner: Vector2) -> void:
 			# a thin coloured rule under the word
 			c.draw_line(Vector2(r.position.x + 4, r.end.y - 2), Vector2(r.end.x - 4, r.end.y - 2), col, 2.0, true)
 		Pub.ZINE:
+			c.draw_rect(r.grow(-1), Color(0.97, 0.965, 0.955))
 			# a marker highlight, a bit sloppy
 			var hl := Color(col.lightened(0.35), 0.45)
 			c.draw_colored_polygon(PackedVector2Array([r.position + Vector2(1, 6), Vector2(r.end.x, r.position.y + 4),

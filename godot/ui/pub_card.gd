@@ -9,6 +9,7 @@ const SZ := Vector2(272, 404)
 const ART_Y := 78.0
 const ART_H := 112.0
 const TEXT_Y := 208.0
+const TEXT_Y_FULL := 238.0
 
 var db: Dictionary
 var card: Dictionary
@@ -18,6 +19,7 @@ var _deco: Control
 
 
 var opts := {}
+var full := true   # art fills the card and the text sits over it
 
 
 ## opts.collage: [[scene, pub], ...] makes the picture a collage of torn strips
@@ -26,6 +28,7 @@ func setup(p_db: Dictionary, p_card: Dictionary, p_opts := {}) -> PubCard:
 	db = p_db
 	card = p_card
 	opts = p_opts
+	full = opts.get("full_art", true)
 	pub = Pub.of_card(card)
 	size = SZ
 	custom_minimum_size = SZ
@@ -64,19 +67,21 @@ func _build() -> void:
 	sheet.material = mat
 	add_child(sheet)
 
+	if full:
+		_picture_full()
 	_deco = Control.new()
 	_deco.mouse_filter = MOUSE_FILTER_IGNORE
 	_deco.size = SZ
 	_deco.draw.connect(_draw_deco)
 	add_child(_deco)
-
-	_picture()
+	if not full:
+		_picture()
 	call("_head_%d" % pub)
 
 	_content = VBoxContainer.new()
 	_content.mouse_filter = MOUSE_FILTER_IGNORE
 	_content.add_theme_constant_override("separation", 0)
-	_content.position = Vector2(_text_x(), TEXT_Y + (12.0 if pub == Pub.COMIC else 0.0))
+	_content.position = Vector2(_text_x(), (TEXT_Y_FULL + {Pub.COMIC: 14.0, Pub.ALMANAC: 6.0}.get(pub, 0.0)) if full else TEXT_Y + (12.0 if pub == Pub.COMIC else 0.0))
 	_content.size = Vector2(SZ.x - _text_x() - (18.0 if pub == Pub.COMIC else 14.0), 0)
 	add_child(_content)
 	for i in card.clauses.size():
@@ -96,6 +101,30 @@ func cost_text() -> String:
 
 
 # ---------- picture ----------
+
+func _picture_full() -> void:
+	var box := Control.new()
+	box.mouse_filter = MOUSE_FILTER_IGNORE
+	box.position = Vector2(6, 6)
+	box.size = SZ - Vector2(12, 12)
+	box.clip_contents = true
+	add_child(box)
+	var pic := TextureRect.new()
+	pic.mouse_filter = MOUSE_FILTER_IGNORE
+	pic.size = box.size
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_SCALE
+	var pm := ShaderMaterial.new()
+	pm.shader = PHOTO
+	pm.set_shader_parameter("pub", pub)
+	pm.set_shader_parameter("rect_size", box.size)
+	pm.set_shader_parameter("accent", Pub.RISO)
+	pic.material = pm
+	box.add_child(pic)
+	var art_style: String = ["photo", "ink", "silhouette", "xerox", "line", "woodcut"][pub]
+	Illo.texture(Engine.get_main_loop(), Illo.PUB_FULL[pub], Look.THEME.get(main_verb(), Look.THEME.ui), box.size,
+		func(tex): if is_instance_valid(pic): pic.texture = tex, art_style)
+
 
 func _picture() -> void:
 	var box := Control.new()
@@ -207,19 +236,20 @@ func _head_0() -> void:  # newspaper
 	var head := _name_label("playfair-900", 25, Pub.INK, true, SZ.x - 32)
 	head.position = Vector2(16, 47)
 	add_child(head)
-	var cap := Pub.label("Onlookers gather as the swing goes wide.", "playfair-400i", 10, Color(Pub.INK, 0.75))
-	cap.position = Vector2(16, ART_Y + ART_H + 1)
-	add_child(cap)
-	var credit := Pub.label("DAILY CUT WIRE PHOTO", "oswald-400", 7, Color(Pub.INK, 0.6))
-	credit.position = Vector2(SZ.x - 13, ART_Y + 2)
+	if not full:
+		var cap := Pub.label("Onlookers gather as the swing goes wide.", "playfair-400i", 10, Color(Pub.INK, 0.75))
+		cap.position = Vector2(16, ART_Y + ART_H + 1)
+		add_child(cap)
+	var credit := Pub.label("DAILY CUT WIRE PHOTO", "oswald-400", 7, Color(Pub.INK, 0.6) if not full else Color(1, 1, 1, 0.8))
+	credit.position = Vector2(SZ.x - 13, ART_Y + 6)
 	credit.rotation = PI * 0.5
 	add_child(credit)
-	var by := Pub.label("By a Staff Reporter", "oswald-400", 8, Color(Pub.INK, 0.7))
+	var by := Pub.label("By a Staff Reporter", "oswald-400", 8, Color(Pub.INK, 0.7) if not full else Color(1, 1, 1, 0.75))
 	by.position = Vector2(SZ.x - 30 - 90, SZ.y - 48)
 	by.size = Vector2(90, 10)
 	by.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(by)
-	var cont := Pub.label("Continued on A4 ▸", "playfair-400i", 9, Color(Pub.INK, 0.7))
+	var cont := Pub.label("Continued on A4 ▸", "playfair-400i", 9, Color(Pub.INK, 0.7) if not full else Color(1, 1, 1, 0.75))
 	cont.position = Vector2(SZ.x - 30 - 110, SZ.y - 26)
 	cont.size = Vector2(110, 12)
 	cont.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -368,7 +398,90 @@ func _head_5() -> void:  # almanac
 
 # ---------- drawn decoration ----------
 
+## Full-art cards: what sits over the picture so the text stays readable.
+func _draw_full() -> void:
+	var c := _deco
+	match pub:
+		Pub.NEWS:
+			c.draw_rect(Rect2(0, 0, SZ.x, 80), Color(0.925, 0.902, 0.835))
+			c.draw_line(Vector2(16, 32), Vector2(SZ.x - 16, 32), Pub.INK, 1.5)
+			c.draw_line(Vector2(16, 35), Vector2(SZ.x - 16, 35), Pub.INK, 0.8)
+			c.draw_line(Vector2(16, 47), Vector2(SZ.x - 16, 47), Pub.INK, 0.8)
+			c.draw_line(Vector2(0, 80), Vector2(SZ.x, 80), Pub.INK, 1.2)
+			for i in 30:
+				var y := 196.0 + i * 7.0
+				c.draw_rect(Rect2(6, y, SZ.x - 12, 7), Color(0.05, 0.05, 0.06, clampf(i / 14.0, 0.0, 1.0) * 0.82))
+		Pub.COMIC:
+			c.draw_rect(Rect2(6, 6, SZ.x - 12, 64), Color("#2f6fe4"))
+			for y in range(10, 68, 6):
+				for x in range(10 + (y / 6 % 2) * 3, int(SZ.x) - 8, 6):
+					c.draw_circle(Vector2(x, y), 1.3, Color("#1f4fb4"))
+			c.draw_line(Vector2(6, 70), Vector2(SZ.x - 6, 70), Pub.INK, 3.0)
+			c.draw_rect(Rect2(SZ.x - 68, 6, 50, 60), Color.WHITE)
+			c.draw_rect(Rect2(SZ.x - 68, 6, 50, 14), Color("#e3262f"))
+			c.draw_rect(Rect2(SZ.x - 68, 6, 50, 60), Pub.INK, false, 2.5)
+			var sb := StyleBoxFlat.new()
+			sb.draw_center = false
+			sb.border_color = Pub.INK
+			sb.set_border_width_all(4)
+			sb.set_corner_radius_all(3)
+			sb.anti_aliasing = true
+			c.draw_style_box(sb, Rect2(Vector2(4, 4), SZ - Vector2(8, 8)))
+		Pub.PULP:
+			for i in 26:
+				var y := 210.0 + i * 7.0
+				c.draw_rect(Rect2(6, y, SZ.x - 12, 7), Color(0.08, 0.0, 0.06, clampf(i / 12.0, 0.0, 1.0) * 0.55))
+			c.draw_rect(Rect2(12, 10, SZ.x - 76, 20), Color("#c4161c"))
+			c.draw_circle(Vector2(SZ.x - 36, 28), 22, Color("#ffd23c"), true, -1.0, true)
+			c.draw_circle(Vector2(SZ.x - 36, 28), 22, Color("#12020a"), false, 2.0, true)
+			var rib := PackedVector2Array([Vector2(SZ.x - 176, SZ.y - 34), Vector2(SZ.x - 14, SZ.y - 40), Vector2(SZ.x - 12, SZ.y - 16), Vector2(SZ.x - 174, SZ.y - 12)])
+			c.draw_colored_polygon(rib, Color("#ffd23c"))
+		Pub.ZINE:
+			for y in [60.0, SZ.y - 60.0]:
+				c.draw_line(Vector2(8, y - 9), Vector2(8, y + 9), Color("#8a8f99"), 2.5, true)
+			var pts := PackedVector2Array()
+			for i in 26:
+				var a := i * TAU / 24.0 - 0.4
+				var r := 24.0 + sin(i * 1.7) * 1.5 + i * 0.12
+				pts.append(Vector2(SZ.x - 40, 38) + Vector2(cos(a) * r, sin(a) * r * 0.86))
+			c.draw_colored_polygon(pts, Color(0.96, 0.955, 0.945))
+			c.draw_polyline(pts, Pub.RISO, 2.5, true)
+		Pub.MANUAL:
+			var hk := Vector2(SZ.x - 62, 30)
+			c.draw_polyline(PackedVector2Array([hk + Vector2(0, 20), hk, hk + Vector2(34, -6)]), Color("#111111"), 3.0, true)
+			c.draw_line(Vector2(16, 70), Vector2(SZ.x - 16, 70), Color("#111111"), 1.0)
+			var px := 18.0
+			for i in card.clauses.size():
+				var r := Rect2(px, SZ.y - 34, 46, 22)
+				c.draw_rect(r, Color.WHITE)
+				c.draw_rect(r, Color("#111111"), false, 1.0)
+				c.draw_circle(r.position + Vector2(12, 11), 5, Color("#111111"), false, 1.2, true)
+				c.draw_line(r.position + Vector2(9, 11), r.position + Vector2(15, 11), Color("#111111"), 1.2)
+				c.draw_string(Pub.font("hd/nunito-800"), r.position + Vector2(22, 16), "1×", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#111111"))
+				px += 52
+		Pub.ALMANAC:
+			var paper := Color(0.94, 0.87, 0.71)
+			# title banner and the text panel, both on the almanac's paper
+			c.draw_rect(Rect2(14, 10, SZ.x - 28, 64), paper)
+			c.draw_rect(Rect2(14, 10, SZ.x - 28, 64), Pub.BROWN, false, 1.2)
+			c.draw_rect(Rect2(17, 13, SZ.x - 34, 58), Color(Pub.BROWN, 0.6), false, 0.6)
+			var tp := Rect2(14, 228, SZ.x - 28, SZ.y - 242)
+			c.draw_rect(tp, paper)
+			c.draw_rect(tp, Pub.BROWN, false, 1.2)
+			c.draw_rect(tp.grow(-3), Color(Pub.BROWN, 0.6), false, 0.6)
+			c.draw_rect(Rect2(8, 8, SZ.x - 16, SZ.y - 16), Color(Pub.BROWN, 0.8), false, 1.6)
+			for p in [Vector2(8, 8), Vector2(SZ.x - 8, 8), Vector2(8, SZ.y - 8), Vector2(SZ.x - 8, SZ.y - 8)]:
+				c.draw_colored_polygon(PackedVector2Array([p + Vector2(0, -5), p + Vector2(5, 0), p + Vector2(0, 5), p + Vector2(-5, 0)]), Pub.BROWN)
+			var mc := Vector2(SZ.x - 44, 48)
+			c.draw_circle(mc, 17, Color("#f6ecd2"), true, -1.0, true)
+			c.draw_circle(mc + Vector2(7, 0), 15, Color(Pub.BROWN, 0.18), true, -1.0, true)
+			c.draw_circle(mc, 17, Pub.BROWN, false, 1.2, true)
+
+
 func _draw_deco() -> void:
+	if full:
+		_draw_full()
+		return
 	var c := _deco
 	var art := Rect2(16, ART_Y, SZ.x - 32, ART_H)
 	match pub:
@@ -490,7 +603,7 @@ func _clause(clause: Dictionary, ci: int) -> Control:
 		var text: String = Grammar.chunk_label(db, ch).trim_suffix(":") if ch else _hole_text(slot, card)
 		var src := Pub.of_chunk(ch, card) if ch else pub
 		var cv := PubChunk.new().setup(slot, ch, text, src, pub,
-			{"max_w": mw - (30.0 if clause.condition and slot != "condition" else 0.0), "uid": card.uid + str(ci)})
+			{"light": full and pub == Pub.NEWS, "max_w": mw - (30.0 if clause.condition and slot != "condition" else 0.0), "uid": card.uid + str(ci)})
 		if slot == "trigger":
 			lead.append(cv)
 		elif slot == "condition" and (ch != null or holes.has(slot)):
@@ -507,7 +620,7 @@ func _clause(clause: Dictionary, ci: int) -> Control:
 		row.mouse_filter = MOUSE_FILTER_IGNORE
 		row.add_theme_constant_override("separation", -4)
 		var arrow := IndentArrow.new()
-		arrow.col = Pub.ink(pub, "condition")
+		arrow.col = Color("#f6f1e4") if (full and pub == Pub.NEWS) else Pub.ink(pub, "condition")
 		arrow.custom_minimum_size = Vector2(30, 34)
 		row.add_child(arrow)
 		var f := _flow(rest)
@@ -551,8 +664,8 @@ func _fit() -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(_content):
 		return
-	var foot: float = {Pub.NEWS: 48.0, Pub.PULP: 44.0, Pub.COMIC: 28.0, Pub.MANUAL: 40.0}.get(pub, 16.0)
-	var room: float = SZ.y - TEXT_Y - foot
+	var foot: float = {Pub.NEWS: 48.0, Pub.PULP: 44.0, Pub.COMIC: 28.0, Pub.MANUAL: 40.0, Pub.ALMANAC: 22.0}.get(pub, 16.0)
+	var room: float = SZ.y - (TEXT_Y_FULL if full else TEXT_Y) - foot
 	var h: float = _content.get_combined_minimum_size().y
 	if h > room:
 		var k: float = room / h

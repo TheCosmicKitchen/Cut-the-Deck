@@ -7,6 +7,7 @@ class_name Illo
 extends RefCounted
 
 const DESIGN := Vector2(212, 112)   # scenes are authored in this space
+const DESIGN_P := Vector2(120, 178) # full-card portrait scenes ("p_" names)
 const GROUND := 92.0
 
 const INK := Color("#2a1d55")
@@ -37,6 +38,9 @@ const SCENES := {
 	"second_wind": "second_wind", "cheap_shot": "cheap_shot", "bulwark": "bulwark",
 	"opening": "opening", "blood_price": "blood_price",
 }
+## full-card portrait scenes for each publication's cards
+const PUB_FULL := ["p_wrecking", "p_hero", "p_inkwell", "p_zine", "p_flatpack", "p_almanac"]
+
 ## each publication has its own cast; these scenes are drawn for it
 const PUB_SCENES := {
 	"reckless_swing": "wrecking", "jab": "hero_jab", "blood_price": "blood_price",
@@ -71,6 +75,7 @@ static func texture(tree: SceneTree, scene: String, pal: Array, sz: Vector2, don
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	var canvas := Canvas.new()
 	canvas.scene = scene
+	canvas.portrait = scene.begins_with("p_")
 	canvas.style = style
 	canvas.pal = pal
 	canvas.size = sz * 2.0
@@ -89,6 +94,7 @@ static func texture(tree: SceneTree, scene: String, pal: Array, sz: Vector2, don
 class Canvas extends Control:
 	var scene := "strike"
 	var style := "paper"
+	var portrait := false
 	var pal: Array
 	var _base := Transform2D()
 	var _rng := RandomNumberGenerator.new()
@@ -353,8 +359,8 @@ class Canvas extends Control:
 	# ---------- scenes ----------
 
 	func _draw() -> void:
-		var k: float = size.y / DESIGN.y
-		var off := Vector2((size.x - DESIGN.x * k) * 0.5, 0.0)
+		var k: float = size.x / DESIGN_P.x if portrait else size.y / DESIGN.y
+		var off := Vector2.ZERO if portrait else Vector2((size.x - DESIGN.x * k) * 0.5, 0.0)
 		_base = Transform2D(0.0, Vector2(k, k), 0.0, off)
 		var lo := -off.x / k
 		var hi := (size.x - off.x) / k
@@ -376,6 +382,8 @@ class Canvas extends Control:
 			draw_rect(Rect2(i * 2, 0, 2, size.y), Color(INK, a * 0.7))
 
 	func _hills() -> void:
+		if portrait:
+			return
 		var hill_col: Color = pal[1].lerp(pal[2], 0.35)
 		paper(ell(Vector2(40, 98), 70, 34), hill_col, false, 1.0)
 		paper(ell(Vector2(190, 102), 80, 30), hill_col.lerp(pal[1], 0.5), false, 1.0)
@@ -396,6 +404,8 @@ class Canvas extends Control:
 		# a comic panel sky: flat colour with a burst of speed lines
 		draw_rect(Rect2(Vector2.ZERO, size), Color("#ffe14d"))
 		pop()
+		if portrait:
+			return
 		var focus := Vector2(150, 46)
 		for i in 28:
 			var a0 := i * TAU / 28.0
@@ -428,6 +438,8 @@ class Canvas extends Control:
 			var c := Color("#2a0838").lerp(Color("#c4202e"), smoothstep(0.1, 0.75, t)).lerp(Color("#ff8a2a"), smoothstep(0.7, 1.0, t))
 			draw_rect(Rect2(0, size.y * i / 24.0, size.x, size.y / 24.0 + 1), c)
 		pop()
+		if portrait:
+			return
 		var moon := Vector2(150, 40)
 		for i in 5:
 			draw_circle(moon, 34.0 + i * 7.0, Color(1.0, 0.75, 0.3, 0.08), true, -1.0, true)
@@ -1113,6 +1125,222 @@ class Canvas extends Control:
 		draw_circle(Vector2(196, 96), 7, WOOD_PAPER, true, -1.0, true)
 		draw_arc(Vector2(196, 96), 7, 0, TAU, 24, WOOD_INK, 0.8, true)
 		hatch(circ(Vector2(199, 96), 6.4), 1.2, 0.6, 0.45)
+
+	# ---------- full-card portrait scenes (120 x 178; text sits on the lower part) ----------
+
+	func _p_wrecking(lo: float, hi: float) -> void:
+		# the street below, where the text will sit
+		draw_rect(Rect2(Vector2(0, 132), Vector2(120, 50)), tone(Color(0.32, 0.32, 0.34)))
+		# a tall building, corner smashed open
+		part(PackedVector2Array([Vector2(66, 30), Vector2(124, 30), Vector2(124, 134), Vector2(66, 134)]), Color(0.62, 0.6, 0.58), 1.5)
+		for row in 9:
+			for col in 4:
+				var wp := Vector2(72 + col * 12, 36 + row * 11)
+				if wp.x < 86 and wp.y > 46 and wp.y < 96:
+					continue
+				draw_rect(Rect2(wp, Vector2(6, 6)), tone(Color(0.2, 0.2, 0.24)))
+		part(PackedVector2Array([Vector2(66, 46), Vector2(86, 52), Vector2(92, 72), Vector2(84, 96), Vector2(66, 92)]), Color(0.1, 0.1, 0.12), 1.0)
+		_rng.seed = 41
+		for i in 14:
+			var bp := Vector2(_rng.randf_range(40, 80), _rng.randf_range(40, 100))
+			part(rect(bp, 5, 3, _rng.randf_range(-1, 1)), Color(0.5, 0.48, 0.46), 0.6)
+		for d in [[Vector2(70, 98), 12.0], [Vector2(54, 106), 10.0], [Vector2(84, 110), 10.0], [Vector2(62, 116), 9.0]]:
+			draw_circle(d[0], d[1], Color(0.86, 0.86, 0.86, 0.85), true, -1.0, true)
+		# the crane
+		draw_line(Vector2(6, 178), Vector2(6, 22), tone(Color(0.25, 0.25, 0.25)), 1.4, true)
+		draw_line(Vector2(15, 178), Vector2(15, 22), tone(Color(0.25, 0.25, 0.25)), 1.4, true)
+		for i in 20:
+			var y := 178.0 - i * 8.0
+			draw_line(Vector2(6, y), Vector2(15, y - 8), tone(Color(0.3, 0.3, 0.3)), 0.8, true)
+		var tip := Vector2(76, 10)
+		draw_line(Vector2(10, 24), tip, tone(Color(0.22, 0.22, 0.22)), 2.2, true)
+		draw_line(Vector2(10, 30), tip + Vector2(0, 3), tone(Color(0.3, 0.3, 0.3)), 0.8, true)
+		var ball := Vector2(56, 66)
+		draw_line(tip, ball, tone(Color(0.15, 0.15, 0.15)), 1.0, true)
+		part(circ(ball, 11), Color(0.2, 0.2, 0.22), 2.0)
+		for i in 3:
+			draw_arc(tip, tip.distance_to(ball) + 2.0, 1.75 + i * 0.07, 2.2, 10, Color(1, 1, 1, 0.35), 1.0, true)
+		# onlookers and police tape
+		for i in 16:
+			var x := 4.0 + i * 8.0
+			part(ell(Vector2(x, 124), 3.2, 3.6), Color(0.28, 0.28, 0.28), 0.6)
+			part(PackedVector2Array([Vector2(x - 4.5, 136), Vector2(x - 3.5, 128), Vector2(x + 3.5, 128), Vector2(x + 4.5, 136)]), Color(0.18 + (i % 3) * 0.12, 0.18, 0.2), 0.6)
+		for i in 16:
+			var x := i * 8.0
+			draw_line(Vector2(x, 121), Vector2(x + 4, 121), tone(Color(0.12, 0.12, 0.12)), 1.6)
+			draw_line(Vector2(x + 4, 121), Vector2(x + 8, 121), tone(Color(0.9, 0.9, 0.9)), 1.6)
+
+	func _p_hero(lo: float, hi: float) -> void:
+		# a splash panel (under the logo) and a quiet night panel for the text
+		var A := Rect2(2, 2, 116, 108)
+		var B := Rect2(2, 114, 116, 62)
+		var apoly := PackedVector2Array([A.position, Vector2(A.end.x, A.position.y), A.end, Vector2(A.position.x, A.end.y)])
+		draw_rect(A, Color("#ffe14d"))
+		var f := Vector2(82, 62)
+		for i in 22:
+			var a0 := i * TAU / 22.0
+			var wedge := PackedVector2Array([f, f + Vector2(cos(a0), sin(a0)) * 140.0, f + Vector2(cos(a0 + 0.15), sin(a0 + 0.15)) * 140.0])
+			for q in Geometry2D.intersect_polygons(wedge, apoly):
+				draw_colored_polygon(q, Color("#ff8a2e"))
+		# goon, knocked back
+		figure({"head": Vector2(104, 52), "sh": Vector2(100, 60), "sh_b": Vector2(108, 62), "el": Vector2(94, 52), "el_b": Vector2(114, 54),
+			"ha": Vector2(92, 44), "ha_b": Vector2(118, 46), "hip": Vector2(106, 82), "hip_b": Vector2(112, 80), "kn": Vector2(98, 94), "kn_b": Vector2(118, 94),
+			"ft": Vector2(94, 108), "ft_b": Vector2(122, 106)}, {"top": Color("#f4f4f4"), "stripes": INK, "legs": Color("#6b4a2e"), "hat": "beanie", "hat_col": INK,
+			"hair": "", "face": "dazed", "build": 12.0, "thick": 0.95})
+		paper(star(f, 14, 10, 0.5), WHITE, false, 0.2)
+		paper(star(f, 7, 10, 0.5), MUSTARD, false, 0.1)
+		# hero, lunging in
+		figure({"head": Vector2(34, 46), "sh": Vector2(40, 56), "sh_b": Vector2(28, 56), "el": Vector2(56, 60), "el_b": Vector2(18, 66),
+			"ha": Vector2(74, 62), "ha_b": Vector2(22, 74), "hip": Vector2(34, 82), "hip_b": Vector2(26, 82), "kn": Vector2(48, 94), "kn_b": Vector2(16, 98),
+			"ft": Vector2(56, 110), "ft_b": Vector2(6, 110)}, {"top": Color("#2f6fe4"), "legs": Color("#2f6fe4"), "cape": RED, "emblem": MUSTARD, "mask": INK,
+			"gloves": RED, "boots": RED, "build": 16.0, "thick": 1.15, "fist": 4.6})
+		text(Vector2(52, 98), "KRAKK!", "bangers", 17, Color("#ffe14d"), -0.18, 4, INK)
+		# panel B: the city at night
+		draw_rect(B, Color("#24357e"))
+		for i in 9:
+			var bx := B.position.x + i * 13.0
+			var bh := 16.0 + ((i * 37) % 23)
+			draw_rect(Rect2(bx, B.position.y + 22 - (bh - 16), 12, 60), Color("#121c4a"))
+			for wy in 3:
+				draw_rect(Rect2(bx + 3, B.position.y + 26 - (bh - 16) + wy * 8, 2, 3), Color("#ffe14d"))
+				draw_rect(Rect2(bx + 7, B.position.y + 30 - (bh - 16) + wy * 8, 2, 3), Color("#ffe14d"))
+		draw_circle(Vector2(100, B.position.y + 12), 7, Color("#fff6c0"), true, -1.0, true)
+		# gutters and borders
+		for g in [Rect2(-10, -10, 140, 12), Rect2(-10, 110, 140, 4), Rect2(-10, 176, 140, 10), Rect2(-10, -10, 12, 200), Rect2(118, -10, 12, 200)]:
+			draw_rect(g, Color.WHITE)
+		draw_rect(A, INK, false, 1.4)
+		draw_rect(B, INK, false, 1.4)
+
+	func _p_inkwell(lo: float, hi: float) -> void:
+		var moon := Vector2(76, 46)
+		for i in 5:
+			draw_circle(moon, 28.0 + i * 7.0, Color(1.0, 0.75, 0.3, 0.08), true, -1.0, true)
+		draw_circle(moon, 24, Color("#ffe6a0"), true, -1.0, true)
+		draw_circle(moon + Vector2(7, -5), 5, Color(0.9, 0.7, 0.4, 0.5), true, -1.0, true)
+		# the inkwell, huge, at the bottom right
+		var w := Vector2(86, 150)
+		part(PackedVector2Array([w + Vector2(-34, 0), w + Vector2(-38, -30), w + Vector2(-22, -48), w + Vector2(-14, -64), w + Vector2(14, -64), w + Vector2(22, -48), w + Vector2(38, -30), w + Vector2(34, 0)]), INK, 1.2)
+		part(rect(w + Vector2(0, -22), 36, 16), Color("#e8d29a"), 0.6)
+		text(w + Vector2(-11, -17), "INK", "anton", 11, Color("#ffd36a"))
+		part(rect(w + Vector2(0, -68), 34, 9), INK, 1.0)
+		# tentacles of ink, rising and reaching
+		var tents := [
+			[w + Vector2(-8, -70), w + Vector2(-26, -86), w + Vector2(-34, -108), w + Vector2(-22, -126), w + Vector2(-6, -124)],
+			[w + Vector2(8, -70), w + Vector2(22, -92), w + Vector2(26, -118), w + Vector2(16, -136)],
+			[w + Vector2(-32, -20), w + Vector2(-50, -34), w + Vector2(-54, -54), w + Vector2(-46, -64)],
+		]
+		for t in tents:
+			var ws := []
+			for i in t.size():
+				ws.append(lerpf(13.0, 2.5, float(i) / (t.size() - 1)))
+			part(limb(t, ws), INK, 1.1)
+			for i in range(1, t.size() - 1):
+				dot(t[i] + Vector2(1, 2), 1.0)
+		# rocks and the heroine
+		part(PackedVector2Array([Vector2(-4, 132), Vector2(16, 120), Vector2(40, 124), Vector2(52, 140), Vector2(52, 182), Vector2(-4, 182)]), INK, 1.5)
+		figure({"head": Vector2(24, 66), "sh": Vector2(28, 76), "sh_b": Vector2(18, 76), "el": Vector2(36, 66), "el_b": Vector2(10, 84),
+			"ha": Vector2(34, 56), "ha_b": Vector2(4, 88), "hip": Vector2(22, 98), "hip_b": Vector2(16, 98), "kn": Vector2(26, 110), "kn_b": Vector2(12, 110),
+			"ft": Vector2(30, 122), "ft_b": Vector2(8, 122)}, {"top": PULP_RED, "skirt": PULP_RED, "legs": SKIN, "hair": "long", "hair_col": Color("#3a1a0a"),
+			"face": "scream", "build": 9.0, "thick": 0.8, "sleeves": SKIN, "head": 6.4})
+
+	func _p_zine(lo: float, hi: float) -> void:
+		for i in 22:
+			var y := 6.0 + i * 8.0
+			for k in 4:
+				var x := 4.0 + k * 30.0 + (i * 13 % 9)
+				draw_line(Vector2(x, y), Vector2(x + 18 + (k * 7 + i) % 8, y), Color(0.07, 0.07, 0.07, 0.22), 1.3)
+		draw_colored_polygon(_rough(PackedVector2Array([Vector2(48, 30), Vector2(116, 34), Vector2(114, 104), Vector2(50, 100)]), 1.0), RISO)
+		# the taped-in photo
+		draw_set_transform_matrix(_base * Transform2D(0.08, Vector2(82, 66)))
+		var ph := Rect2(-28, -34, 56, 66)
+		draw_rect(ph.grow(3), Color(0.96, 0.955, 0.945))
+		draw_rect(ph.grow(3), Color(0.07, 0.07, 0.07), false, 0.6)
+		pop()
+		push(Vector2(82, 66), 0.78, false, 0.08)
+		figure({"head": Vector2(0, -26), "sh": Vector2(4, -16), "sh_b": Vector2(-6, -16), "el": Vector2(10, -30), "el_b": Vector2(-12, -30),
+			"ha": Vector2(6, -40), "ha_b": Vector2(-6, -40), "hip": Vector2(0, 8), "hip_b": Vector2(-6, 8), "kn": Vector2(16, 14), "kn_b": Vector2(-18, 22),
+			"ft": Vector2(22, 30), "ft_b": Vector2(-28, 32)}, {"top": INK, "sleeves": INK, "legs": Color(0.9, 0.9, 0.9), "hair": "mohawk", "boots": INK, "build": 12.0, "thick": 0.95})
+		part(limb([Vector2(2, -40), Vector2(-20, -46)], [2.6, 2.6]), INK, 0.4)
+		part(PackedVector2Array([Vector2(-20, -46), Vector2(-30, -52), Vector2(-38, -46), Vector2(-34, -38), Vector2(-38, -30), Vector2(-28, -28), Vector2(-22, -36)]), WHITE, 1.0)
+		pop()
+		for t in [[Vector2(60, 34), 0.6], [Vector2(104, 98), 0.5]]:
+			draw_set_transform_matrix(_base * Transform2D(t[1], t[0]))
+			draw_rect(Rect2(-9, -3.5, 18, 7), Color(0.85, 0.85, 0.8, 0.55))
+			pop()
+		text(Vector2(4, 58), "ALL", "marker", 17, Color(0.07, 0.07, 0.07), -0.2)
+		text(Vector2(6, 80), "IN!!", "marker", 18, Color(0.07, 0.07, 0.07), -0.14)
+		draw_polyline(PackedVector2Array([Vector2(6, 88), Vector2(26, 85), Vector2(46, 86)]), Color(0.07, 0.07, 0.07), 1.4, true)
+		draw_polyline(star(Vector2(20, 34), 6, 5, 0.42) + PackedVector2Array([star(Vector2(20, 34), 6, 5, 0.42)[0]]), Color(0.07, 0.07, 0.07), 1.0, true)
+		draw_line(Vector2(30, 106), Vector2(52, 101), Color(0.07, 0.07, 0.07), 1.0, true)
+		draw_line(Vector2(30, 109), Vector2(52, 104), Color(0.07, 0.07, 0.07), 1.0, true)
+		draw_circle(Vector2(53, 102.5), 2.0, Color(0.07, 0.07, 0.07), false, 1.0, true)
+
+	func _p_flatpack(lo: float, hi: float) -> void:
+		var X := Vector2(0.87, 0.5)
+		var U := Vector2(0, -1)
+		var o := Vector2(14, 82)
+		var W := 36.0
+		iso_box(o, 3, 12, 44)
+		iso_box(o, W, 12, 3)
+		iso_box(o + U * 20.0, W, 12, 2.5)
+		iso_box(o + X * (W - 3.0), 3, 12, 44)
+		var top := o + U * 58.0
+		iso_box(top, W, 12, 3)
+		for t in [0.15, 0.85]:
+			dowel(o + X * (W * t) + U * 46.0, -PI * 0.5, 5.0)
+		move_arrow(top + X * (W * 0.5) + Vector2(-5, 8), top + X * (W * 0.5) + Vector2(-5, 15))
+		var bp := PackedVector2Array([Vector2(74, 40), Vector2(96, 53), Vector2(96, 94), Vector2(74, 81)])
+		draw_colored_polygon(bp, Color("#f2f5f9"))
+		var loop := bp.duplicate()
+		loop.append(bp[0])
+		draw_polyline(loop, Color("#1a1a1a"), 0.7, true)
+		move_arrow(Vector2(72, 66), Vector2(60, 66))
+		callout(Vector2(83, 72), "B")
+		callout(Vector2(6, 58), "A")
+		draw_circle(Vector2(108, 48), 9, Color("#1a1a1a"), false, 0.6, true)
+		screw(Vector2(106, 41))
+		callout(Vector2(103, 64), "8×")
+		draw_circle(Vector2(108, 84), 9, Color("#1a1a1a"), false, 0.6, true)
+		dowel(Vector2(105, 89), -PI * 0.5, 8.0)
+		callout(Vector2(103, 100), "4×")
+		draw_line(Vector2(0, 92), Vector2(120, 92), Color("#1a1a1a"), 0.4)
+
+	func _p_almanac(lo: float, hi: float) -> void:
+		var c := Vector2(60, 72)
+		var R := 40.0
+		part(ell(Vector2(50, 116), 60, 30), Color("#d8c49a"), 1.4)
+		part(ell(Vector2(100, 120), 50, 26), Color("#cbb68a"), 1.4)
+		var w := Vector2(34, 58)
+		for b in [[Vector2(-4, -6), 9.0], [Vector2(6, -9), 8.0], [Vector2(-7, 6), 8.0], [Vector2(3, 8), 7.0], [Vector2(0, 0), 10.0]]:
+			part(circ(w + b[0], b[1]), WHITE, 1.3)
+		part(circ(w + Vector2(6, 0), 7.0), WHITE, 1.1)
+		dot(w + Vector2(4, -3), 1.0, INK)
+		part(ell(w + Vector2(11, 2), 2.3, 1.8), INK, 0.4)
+		for i in 4:
+			draw_line(w + Vector2(14, -2 + i * 3), w + Vector2(38 + i * 6, -5 + i * 4), WOOD_INK, 0.6, true)
+		push(Vector2(6, 40), 0.6)
+		figure({"head": Vector2(104, 34), "sh": Vector2(102, 46), "sh_b": Vector2(112, 46), "el": Vector2(94, 36), "el_b": Vector2(120, 58),
+			"ha": Vector2(100, 26), "ha_b": Vector2(122, 68), "hip": Vector2(108, 70), "hip_b": Vector2(114, 70), "kn": Vector2(100, 84), "kn_b": Vector2(120, 84),
+			"ft": Vector2(94, 98), "ft_b": Vector2(126, 98)}, {"top": Color("#e9e2cf"), "overalls": DENIM, "legs": DENIM, "hat": "straw", "hair": "",
+			"boots": Color("#3a2414"), "build": 12.0})
+		pop()
+		card_piece(Vector2(78, 50), -0.5, true, pal[0])
+		card_piece(Vector2(84, 76), 0.6, false, pal[0])
+		# outside the roundel: plain paper with a light engraving, then the rings
+		draw_arc(c, R + 60.0, 0, TAU, 72, WOOD_PAPER, 120.0, true)
+		draw_arc(c, R, 0, TAU, 72, WOOD_INK, 1.4, true)
+		draw_arc(c, R + 3.0, 0, TAU, 72, WOOD_INK, 0.6, true)
+		for i in 8:
+			var a := i * TAU / 8.0
+			var p := c + Vector2(cos(a), sin(a)) * (R + 1.5)
+			draw_colored_polygon(PackedVector2Array([p + Vector2(0, -2.2), p + Vector2(2.2, 0), p + Vector2(0, 2.2), p + Vector2(-2.2, 0)]), WOOD_INK)
+		# wheat sheaves in the lower corners, under the text panel
+		for sx in [12.0, 108.0]:
+			for k in 7:
+				var a := -PI * 0.5 + (k - 3) * 0.16
+				var b := Vector2(sx, 176) + Vector2(cos(a), sin(a)) * 40.0
+				draw_line(Vector2(sx, 176), b, WOOD_INK, 0.7, true)
+				part(ell(b, 1.6, 4.0, a + PI * 0.5), Color("#d8c49a"), 0.5)
 
 	func _cheap_shot(lo: float, hi: float) -> void:
 		sun(Vector2(110, 18), 10)
