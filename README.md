@@ -1,8 +1,17 @@
-# Cut the Deck: web prototype
+# Cut the Deck
 
-A playable one-act build of the MVP plan: combat, the six Workshop tools, quick mid-fight edits, enemy text attacks with telegraphs, a card/enemy library, a step-by-step editing tutorial, and a Sandbox (every card, free edits, a chunk pantry, test fights, the loop fuzz test and deck JSON export).
+**Live at https://thecosmickitchen.github.io/Cut-the-Deck/**: a paper-proxy table and card editor for inventing and playtesting cards.
 
-Live at https://thecosmickitchen.github.io/Cut-the-Deck/
+- **Table:** play by hand, like paper proxies. Trackers, draw/shuffle/end turn, enemy intents, counters on cards, undo. Click any word on a card to cut, copy, mute, invert or paste.
+- **Cards:** the card library. Write text in plain words; keywords are recognized and colored as you type.
+- **Keywords & colors:** each keyword's color, opposite (for Invert) and meaning; the six-color pie; hand size and starting trackers.
+- **Save & share:** saves in the browser automatically; download or load a save file (`cut-the-deck-proxies` JSON) to trade sets.
+
+The whole app is the single file `index.html`. Nothing to build or install.
+
+## Older web prototype
+
+`prototype.html` is the earlier rules-engine prototype (one act with automated combat and Workshop tools). The notes below are about it.
 
 ## Run it
 
