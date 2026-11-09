@@ -2,257 +2,1154 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Cut the Deck: a roguelike deckbuilder where card text is the crafting material. Cut, paste, mute, invert and merge your cards while enemies edit them back. Free, in your browser.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>">
-<title>Cut the Deck</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Cut the Deck Proxies</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@75..150,500..900&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: a self-healing cutting mat with paper cards laid on it; tools along the top edge like a ruler. */
+/* Layout: a play table with paper proxies on it; library, keywords and save are plain work screens. */
 :root {
-  --mat: #d9e3dc; --mat-line: rgba(30, 70, 55, .09); --mat-major: rgba(30, 70, 55, .18);
-  --surface: #eef3ef; --edge: #b9c9be;
-  --fg: #14231d; --fg-2: #4b5f56;
-  --paper: #fbfaf5; --paper-fg: #1b1d1a; --paper-2: #6b6b62; --paper-edge: #d7d3c5;
-  --accent: #e0a21a; --accent-fg: #1a1405; --focus: #1d7f93;
-  --good: #2f7d3c; --bad: #b8352a;
-  --c-verb: #c2412d; --c-amount: #2754b5; --c-repeat: #7a3cb0; --c-target: #2f7d3c; --c-condition: #9a6100; --c-trigger: #436670;
-  --f-display: "Anybody", "Arial Narrow", system-ui, sans-serif;
-  --f-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-  --shadow: 0 1px 0 rgba(0,0,0,.06), 0 6px 14px -6px rgba(20, 40, 30, .35);
+  --table: #e8e5de; --panel: #f6f4ef; --panel-2: #efece5; --line: #cdc8bd; --line-2: #ddd8ce;
+  --ink: #1c1d1f; --ink-2: #55595d; --accent: #1f5fbf; --accent-bg: #dbe7fb; --accent-ink: #ffffff;
+  --danger: #b3261e; --ok: #2f7d3c; --warn-bg: #fbefd2; --warn-ink: #6b4500;
+  --paper: #fffdf8; --paper-ink: #1b1c1e; --paper-2: #5f6064; --paper-edge: #2a2b2e; --slip: #fff4c8;
+  --f-ui: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-card: "Archivo Narrow", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --shadow: 0 1px 0 rgba(0,0,0,.08), 0 6px 14px -8px rgba(0,0,0,.45);
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --mat: #132a23; --mat-line: rgba(170, 230, 200, .06); --mat-major: rgba(170, 230, 200, .13);
-  --surface: #1b362e; --edge: #2f5246;
-  --fg: #e2eee8; --fg-2: #9fb8ad;
-  --paper: #ebe7da; --paper-fg: #1b1d1a; --paper-2: #5f5e55; --paper-edge: #c9c3b0;
-  --accent: #f0b432; --accent-fg: #1a1405; --focus: #5cc6d9;
-  --good: #6cc27a; --bad: #f07a6c;
-  --shadow: 0 1px 0 rgba(0,0,0,.3), 0 8px 18px -6px rgba(0,0,0,.6);
+  --table: #1c1e21; --panel: #25282c; --panel-2: #2c3035; --line: #41464c; --line-2: #363a40;
+  --ink: #ebe8e2; --ink-2: #a8adb2; --accent: #8ab4ff; --accent-bg: #23395f; --accent-ink: #0d1626;
+  --danger: #ff8a80; --ok: #7fd18b; --warn-bg: #3d3216; --warn-ink: #f3d58e;
+  --paper: #f4f1e8; --paper-ink: #1b1c1e; --paper-2: #55575b; --paper-edge: #0e0f10; --slip: #f6e7a6;
+  --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 18px -8px rgba(0,0,0,.8);
   color-scheme: dark;
 } }
 :root[data-theme="dark"] {
-  --mat: #132a23; --mat-line: rgba(170, 230, 200, .06); --mat-major: rgba(170, 230, 200, .13);
-  --surface: #1b362e; --edge: #2f5246;
-  --fg: #e2eee8; --fg-2: #9fb8ad;
-  --paper: #ebe7da; --paper-fg: #1b1d1a; --paper-2: #5f5e55; --paper-edge: #c9c3b0;
-  --accent: #f0b432; --accent-fg: #1a1405; --focus: #5cc6d9;
-  --good: #6cc27a; --bad: #f07a6c;
-  --shadow: 0 1px 0 rgba(0,0,0,.3), 0 8px 18px -6px rgba(0,0,0,.6);
+  --table: #1c1e21; --panel: #25282c; --panel-2: #2c3035; --line: #41464c; --line-2: #363a40;
+  --ink: #ebe8e2; --ink-2: #a8adb2; --accent: #8ab4ff; --accent-bg: #23395f; --accent-ink: #0d1626;
+  --danger: #ff8a80; --ok: #7fd18b; --warn-bg: #3d3216; --warn-ink: #f3d58e;
+  --paper: #f4f1e8; --paper-ink: #1b1c1e; --paper-2: #55575b; --paper-edge: #0e0f10; --slip: #f6e7a6;
+  --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 18px -8px rgba(0,0,0,.8);
   color-scheme: dark;
 }
-
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }
-body {
-  margin: 0; font-family: var(--f-body); font-size: 15px; line-height: 1.45; color: var(--fg);
-  background-color: var(--mat);
-  background-image:
-    linear-gradient(var(--mat-major) 1px, transparent 1px), linear-gradient(90deg, var(--mat-major) 1px, transparent 1px),
-    linear-gradient(var(--mat-line) 1px, transparent 1px), linear-gradient(90deg, var(--mat-line) 1px, transparent 1px);
-  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
-  background-attachment: fixed;
-}
-button { font: inherit; color: inherit; cursor: pointer; }
-button:focus-visible, [tabindex]:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px; }
+body { margin: 0; background: var(--table); color: var(--ink); font-family: var(--f-ui); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h2 { font-size: 18px; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.sub { color: var(--ink-2); margin: 0; }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1480px; margin: 0 auto; }
 
-/* top bar */
-header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-block: 14px; border-bottom: 1px solid var(--edge); margin-bottom: 18px; }
-.mark { font-family: var(--f-display); font-weight: 850; font-stretch: 130%; font-size: 22px; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 2px; white-space: nowrap; }
-.mark .cut { display: inline-block; transform: translateY(2px) rotate(-3deg); color: var(--accent); }
-nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
-nav.tabs button { border: 1px solid transparent; background: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; color: var(--fg-2); }
-nav.tabs button[aria-current="page"] { color: var(--fg); border-color: var(--edge); background: var(--surface); }
-.status { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--f-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
-.status b { font-weight: 700; }
-.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); background: var(--surface); font-family: var(--f-mono); font-size: 12px; }
-.pill.sandbox { border-color: var(--accent); color: var(--fg); }
+/* header */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding-block: 10px; }
+.brand { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.brand b { font-family: var(--f-card); font-size: 20px; letter-spacing: .01em; white-space: nowrap; }
+.packname { border: 1px solid transparent; background: transparent; border-radius: 6px; padding: 3px 6px; font-weight: 700; color: var(--ink-2); width: 15ch; min-width: 0; }
+.packname:hover, .packname:focus { border-color: var(--line); background: var(--panel-2); color: var(--ink); }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+nav.tabs a { text-decoration: none; color: var(--ink-2); font-weight: 700; padding: 8px 12px; border-radius: 8px; }
+nav.tabs a[aria-current="page"] { background: var(--ink); color: var(--panel); }
+.savestate { margin-left: auto; font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.savestate i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; }
 
-h1, h2, h3 { font-family: var(--f-display); font-stretch: 115%; text-wrap: balance; margin: 0; }
-h2 { font-size: 20px; font-weight: 800; }
-h3 { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-2); }
-.sub { color: var(--fg-2); margin: 4px 0 0; max-width: 65ch; }
-.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.stack { display: grid; gap: 14px; }
-.panel { background: var(--surface); border: 1px solid var(--edge); border-radius: 10px; padding: 14px; min-width: 0; }
-
-.btn { border: 1px solid var(--edge); background: var(--surface); padding: 8px 14px; border-radius: 8px; font-weight: 700; }
-.btn:hover { border-color: var(--fg-2); }
-.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.btn.danger { border-color: var(--bad); color: var(--bad); }
+/* buttons */
+.btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 7px 12px; font-weight: 700; min-height: 38px; }
+.btn:hover:not(:disabled) { border-color: var(--ink-2); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.small { min-height: 30px; padding: 3px 9px; font-size: 13px; }
+.btn.ghost { background: transparent; border-style: dashed; color: var(--ink-2); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-width: 0; }
+input[type="text"], input[type="number"], input[type="search"], select, textarea {
+  border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px; padding: 7px 9px; min-width: 0; }
+textarea { width: 100%; resize: vertical; }
 
-/* toast */
-#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--mat); padding: 10px 16px; border-radius: 8px; font-weight: 700; max-width: min(520px, calc(100vw - 32px)); box-shadow: var(--shadow); z-index: 20; }
+main { padding-block: 18px 170px; }
+#toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(70px + env(safe-area-inset-top, 0px)); z-index: 30; background: var(--ink); color: var(--panel); padding: 9px 14px; border-radius: 8px; font-weight: 700; box-shadow: var(--shadow); max-width: min(560px, calc(100vw - 32px)); }
 
 /* ---------- cards ---------- */
-.cards { display: flex; flex-wrap: wrap; gap: 12px; }
-.card {
-  position: relative; width: 168px; min-height: 160px; padding: 10px 11px 30px; border-radius: 9px;
-  background: var(--paper); color: var(--paper-fg); border: 1px solid var(--paper-edge); box-shadow: var(--shadow);
-  display: flex; flex-direction: column; gap: 8px; text-align: left; transition: transform .12s ease, box-shadow .12s ease;
-}
-button.card:hover:not(:disabled), .card.clickable:hover { transform: translateY(-3px); }
-.card.big { width: 100%; max-width: 560px; min-height: 0; padding: 16px 18px 44px; }
-.card.mini { width: 100%; min-height: 0; padding: 8px 10px 8px 46px; gap: 2px; box-shadow: none; }
-.card.mini .foot { position: static; margin-top: 2px; }
-.card.mini .cost { top: 7px; }
-.card.selected { outline: 3px solid var(--accent); outline-offset: 1px; }
-.card.spent { opacity: .55; }
-.card.unaffordable .cost { background: var(--paper-2); }
-.card .head { display: flex; align-items: center; gap: 8px; padding-left: 34px; min-height: 26px; }
-.card.mini .head { padding-left: 0; min-height: 0; flex: 0 0 auto; }
-.card .cost {
-  position: absolute; top: 9px; left: 9px; width: 28px; height: 28px; border-radius: 50%;
-  background: var(--paper-fg); color: var(--paper); display: grid; place-items: center;
-  font-family: var(--f-mono); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums;
-}
-.card .cost.x { font-size: 11px; }
-.card .cost.none { background: transparent; color: var(--paper-2); border: 1.5px dashed var(--paper-2); }
-.card .name { font-family: var(--f-display); font-weight: 800; font-stretch: 105%; font-size: 15px; line-height: 1.15; }
-.card.big .name { font-size: 22px; }
-.card .text { display: grid; gap: 6px; font-size: 14px; line-height: 1.55; }
-.card.big .text { font-size: 17px; gap: 12px; }
-.card.mini .text { display: block; font-size: 13px; color: var(--paper-2); }
-.card.mini .text .clause { display: inline; }
-.card.mini .text .clause + .clause::before { content: " · "; }
-.card .foot { position: absolute; left: 11px; right: 11px; bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--paper-2); }
-.tag { padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; }
-.tag.broken { color: var(--c-verb); }
-.tag.warn { color: #8a5a00; background: #fff2cf; border-color: #e3bb5a; }
+.cards { display: flex; flex-wrap: wrap; gap: 10px; min-height: 60px; }
+.card { position: relative; width: 172px; min-height: 226px; background: var(--paper); color: var(--paper-ink); border: 1.5px solid var(--paper-edge);
+  border-radius: 9px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; }
+.card.enemy { width: 214px; }
+.card.big { width: 260px; min-height: 330px; }
+.card.sel { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card .band { height: 8px; flex: none; border-bottom: 1.5px solid var(--paper-edge); }
+.card .chead { display: flex; align-items: flex-start; gap: 6px; padding: 7px 8px 0; }
+.card .cname { all: unset; cursor: pointer; flex: 1; min-width: 0; font-family: var(--f-card); font-weight: 700; font-size: 16px; line-height: 1.15; overflow-wrap: anywhere; }
+.card .cname:focus-visible { outline: 2px solid var(--accent); }
+.card .cost { flex: none; min-width: 26px; height: 26px; padding: 0 5px; border-radius: 13px; border: 1.5px solid var(--paper-ink); display: grid; place-items: center; font-family: var(--f-mono); font-weight: 700; font-size: 13px; }
+.card .ctype { padding: 2px 8px 6px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--paper-2); border-bottom: 1px solid #d9d5ca; }
+.card .ctext { padding: 7px 8px; font-size: 14px; line-height: 1.5; flex: 1; display: grid; align-content: start; gap: 4px; }
+.card.big .ctext { font-size: 16px; }
+.card .ln.now { background: #fde9b0; border-radius: 4px; outline: 1.5px solid #c99300; }
+.card .ln.dim { color: var(--paper-2); }
+.tok { all: unset; cursor: pointer; border-radius: 3px; padding: 0 1px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.tok:hover { background: #ece7da; }
+.tok:focus-visible { outline: 2px solid var(--accent); }
+.tok.kw { font-weight: 700; box-shadow: inset 0 -3px 0 var(--kc); }
+.tok.num { font-family: var(--f-mono); font-weight: 700; }
+.tok.m { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--paper-2); box-shadow: none; }
+.tok.slip { background: var(--slip); outline: 1px dashed #9b8a3c; }
+.tok.on { background: var(--accent) !important; color: #fff; box-shadow: none; }
+.empty-line { color: var(--paper-2); font-style: italic; font-size: 13px; }
+.card .ctrs { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 8px; }
+.ctr { display: inline-flex; align-items: center; gap: 2px; border: 1px solid #bdb8ac; border-radius: 6px; font-size: 12px; font-weight: 700; background: #f3f0e6; }
+.ctr b { font-family: var(--f-mono); padding: 0 2px; }
+.ctr span { padding-left: 6px; }
+.ctr button { border: none; background: none; padding: 2px 6px; min-width: 26px; min-height: 26px; font-weight: 700; color: var(--paper-ink); }
+.ctr.hp { font-size: 14px; background: #fff; border-color: var(--paper-ink); }
+.card .tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 8px; }
+.tag { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; border: 1px solid currentColor; color: var(--paper-2); }
+.tag.clash { color: #a3271c; }
+.card .estep { padding: 0 8px 8px; }
 
-/* chunks: colored by type so any card reads at a glance */
-.chunk { border-radius: 4px; padding: 0 3px; margin: 0 -1px; box-decoration-break: clone; -webkit-box-decoration-break: clone; font-weight: 700; border: 1px solid transparent; }
-.chunk.t-verb { color: var(--c-verb); }
-.chunk.t-amount { color: var(--c-amount); font-family: var(--f-mono); }
-.chunk.t-repeat { color: var(--c-repeat); }
-.chunk.t-target { color: var(--c-target); }
-.chunk.t-condition { color: var(--c-condition); font-weight: 400; font-style: italic; }
-.chunk.t-trigger { color: var(--c-trigger); text-transform: uppercase; font-size: .82em; letter-spacing: .05em; }
-.chunk.muted { color: var(--paper-2) !important; text-decoration: line-through; text-decoration-thickness: 2px; opacity: .75; }
-.chunk.redacted { background: var(--paper-fg); color: var(--paper-fg) !important; text-decoration: none; opacity: 1; }
-.chunk.enemy { border-bottom: 2px wavy var(--bad); }
-.chunk.tele { border: 1.5px dashed var(--bad); background: rgba(184, 53, 42, .08); }
-.chunk.empty { color: var(--paper-2); border: 1.5px dashed var(--paper-edge); font-weight: 400; font-size: .8em; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; }
-.chunk.empty.req { border-color: var(--c-verb); color: var(--c-verb); }
-.editable .chunk { cursor: pointer; }
-.editable .chunk:hover { background: rgba(224, 162, 26, .22); border-color: var(--accent); }
-.editable .chunk.fits { border: 1.5px solid var(--accent); }
-.card.big .clause { padding: 8px 10px; border-radius: 6px; background: rgba(0,0,0,.03); }
-.card.big .clause.new { background: none; border: 1.5px dashed var(--paper-edge); color: var(--paper-2); font-size: 13px; }
-.clause-label { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--paper-2); font-weight: 700; margin-bottom: 2px; }
+/* ---------- table ---------- */
+.trackers { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.trk { display: inline-flex; align-items: center; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.trk span { font-weight: 700; padding: 0 6px; font-size: 14px; }
+.trk b { font-family: var(--f-mono); font-size: 18px; min-width: 2.2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.trk button { border: none; background: var(--panel-2); border-radius: 7px; min-width: 32px; min-height: 32px; font-weight: 700; }
+.tablegrid { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin-top: 14px; }
+.tablemain { flex: 999 1 640px; min-width: 0; display: grid; gap: 14px; }
+.tableside { flex: 1 1 280px; min-width: 0; display: grid; gap: 12px; }
+.zone { border: 1.5px dashed var(--line); border-radius: 12px; padding: 10px; min-width: 0; }
+.zone.over { border-color: var(--accent); background: var(--accent-bg); }
+.zone > .zh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-bottom: 8px; }
+.zone > .zh .hint { font-size: 13px; color: var(--ink-2); }
+.pile { display: grid; gap: 8px; }
+.pile .count { font-family: var(--f-mono); font-size: 26px; font-weight: 700; }
+.minilist { display: grid; gap: 4px; max-height: 220px; overflow: auto; }
+.minilist button { text-align: left; border: 1px solid var(--line-2); background: var(--panel-2); border-radius: 6px; padding: 5px 8px; font-size: 14px; }
+.clips { display: flex; flex-wrap: wrap; gap: 6px; }
+.clip { display: inline-flex; align-items: center; border-radius: 6px; border: 1.5px solid var(--paper-edge); background: var(--paper); color: var(--paper-ink); font-weight: 700; font-size: 14px; }
+.clip button { border: none; background: none; color: inherit; padding: 5px 8px; min-height: 32px; }
+.clip .x { padding: 5px 7px; color: var(--paper-2); }
+.clip.on { outline: 3px solid var(--accent); }
+.clip.kw { box-shadow: inset 0 -3px 0 var(--kc); }
+.log { font-size: 13px; color: var(--ink-2); display: grid; gap: 2px; max-height: 200px; overflow: auto; }
+.newgame { border-color: var(--accent); }
+.checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.checks label { display: inline-flex; gap: 6px; align-items: center; min-height: 32px; }
 
-/* ---------- workshop ---------- */
-.ws { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 20px; align-items: start; }
-@media (max-width: 760px) { .ws { grid-template-columns: minmax(0, 1fr); } }
-.decklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 8px; padding: 2px; }
-.tools { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-@media (max-width: 640px) { .tools { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.tool { border: 1px solid var(--edge); background: var(--mat); border-radius: 8px; padding: 8px 6px; text-align: center; display: grid; gap: 2px; }
-.tool .tn { font-weight: 700; }
-.tool .tc { font-family: var(--f-mono); font-size: 11px; color: var(--fg-2); }
-.tool[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.tool[aria-pressed="true"] .tc { color: var(--accent-fg); }
-.clip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.clip .slot { min-height: 38px; border: 1.5px dashed var(--edge); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 4px 6px; background: var(--paper); color: var(--paper-fg); font-size: 13px; }
-.clip .slot.emptyslot { background: transparent; }
-.clip .slot.sel { outline: 3px solid var(--accent); }
-.clip .slot button.pickc { all: unset; cursor: pointer; flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.clip .slot button.x { border: none; background: none; color: var(--paper-2); padding: 0 4px; font-size: 16px; line-height: 1; }
-.preview { font-family: var(--f-mono); font-size: 13px; color: var(--fg-2); min-height: 20px; }
-.banner { border-left: 4px solid var(--accent); background: var(--surface); padding: 10px 12px; border-radius: 0 8px 8px 0; }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; }
-.legend .chunk { background: var(--paper); border: 1px solid var(--paper-edge); }
+/* ---------- edit bar ---------- */
+#editbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--panel); border-top: 2px solid var(--ink);
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding-top: 10px; box-shadow: 0 -8px 20px -12px rgba(0,0,0,.4); }
+#editbar .wrap { display: grid; gap: 8px; }
+#editbar .what { font-size: 14px; color: var(--ink-2); }
+#editbar .what b { color: var(--ink); }
+#editbar .grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#editbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
 
-/* ---------- run track ---------- */
-.track { display: flex; gap: 0; overflow-x: auto; padding: 4px 0 8px; }
-.node { flex: 1 0 96px; display: grid; justify-items: center; gap: 6px; position: relative; font-size: 12px; color: var(--fg-2); text-align: center; }
-.node::before { content: ""; position: absolute; top: 15px; left: 0; right: 0; height: 2px; background: var(--edge); z-index: 0; }
-.node:first-child::before { left: 50%; } .node:last-child::before { right: 50%; }
-.node .dot { position: relative; z-index: 1; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--edge); background: var(--mat); display: grid; place-items: center; font-family: var(--f-mono); font-weight: 700; font-size: 12px; color: var(--fg); }
-.node.done .dot { background: var(--edge); }
-.node.now .dot { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
-.node.now { color: var(--fg); font-weight: 700; }
+/* ---------- library ---------- */
+.libgrid { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.liblist { flex: 1 1 280px; max-width: 360px; min-width: 0; }
+.libform { flex: 999 1 420px; min-width: 0; display: grid; gap: 12px; }
+.libprev { flex: 1 1 280px; min-width: 0; display: grid; gap: 10px; justify-items: start; }
+.items { display: grid; gap: 4px; max-height: 640px; overflow: auto; margin-top: 8px; }
+.item { display: flex; align-items: center; gap: 8px; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 8px; padding: 6px 8px; min-height: 44px; width: 100%; }
+.item:hover { background: var(--panel-2); }
+.item.on { border-color: var(--ink); background: var(--panel-2); }
+.item .nm { flex: 1; min-width: 0; font-weight: 700; }
+.item .meta { font-size: 12px; color: var(--ink-2); font-family: var(--f-mono); }
+.dots { display: inline-flex; gap: 2px; }
+.dots i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; min-height: 32px; display: inline-flex; align-items: center; gap: 6px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.chip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label, .field .lab { font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.help { font-size: 13px; color: var(--ink-2); }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
 
-/* ---------- combat ---------- */
-.arena { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 16px; align-items: start; }
-@media (max-width: 900px) { .arena { grid-template-columns: minmax(0, 1fr); } }
-.foes { display: flex; flex-wrap: wrap; gap: 12px; }
-.foe { flex: 1 1 220px; max-width: 340px; text-align: left; border: 1.5px solid var(--edge); background: var(--surface); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
-.foe.targeted { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
-.foe.dead { opacity: .4; }
-.foe .fn { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-.foe .fn b { font-family: var(--f-display); font-stretch: 110%; font-size: 17px; }
-.role { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-2); font-weight: 700; }
-.bar { height: 8px; border-radius: 4px; background: var(--mat); overflow: hidden; border: 1px solid var(--edge); }
-.bar > i { display: block; height: 100%; background: var(--bad); }
-.bar.me > i { background: var(--good); }
-.nums { font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; display: flex; gap: 10px; flex-wrap: wrap; color: var(--fg-2); }
-.nums b { color: var(--fg); }
-.intent { font-size: 13px; font-weight: 700; padding: 6px 8px; border-radius: 6px; background: var(--mat); border: 1px solid var(--edge); }
-.intent.edit { border-color: var(--bad); color: var(--bad); }
-.me-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
-.energy { display: flex; gap: 5px; align-items: center; }
-.energy i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--accent); }
-.energy i.on { background: var(--accent); }
-.energy span { font-family: var(--f-mono); font-weight: 700; margin-left: 4px; }
-.qtools { display: flex; gap: 6px; flex-wrap: wrap; }
-.log { font-size: 13px; display: grid; gap: 3px; max-height: 420px; overflow: auto; }
-.log div { color: var(--fg-2); }
-.log div.t { color: var(--fg); font-weight: 700; margin-top: 4px; }
-.hand-note { font-size: 13px; color: var(--fg-2); min-height: 20px; }
-.result { text-align: center; padding: 18px; }
-.result h2 { font-size: 30px; font-stretch: 140%; }
-
-/* ---------- tutorial ---------- */
-.tut { border-color: var(--accent); }
-.tut-body { max-width: 70ch; display: grid; gap: 6px; }
-.tut-body p, .tut-body ul { margin: 0; }
-.tut-body .chunk { background: var(--paper); border: 1px solid var(--paper-edge); }
-.tut-ok { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--mat); border: 1px solid var(--good); color: var(--fg); font-weight: 700; max-width: 70ch; }
-.steps { display: flex; gap: 4px; }
-.steps i { width: 18px; height: 5px; border-radius: 3px; background: var(--edge); }
-.steps i.done { background: var(--good); }
-.steps i.now { background: var(--accent); }
-@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(224, 162, 26, .75); } 50% { box-shadow: 0 0 0 6px rgba(224, 162, 26, 0); } }
-.hint { outline: 2px solid var(--accent) !important; outline-offset: 2px; animation: pulse 1.4s ease-in-out infinite; }
-.chunk.hint { outline-offset: 1px; }
-@media (prefers-reduced-motion: reduce) { .hint { animation: none; } }
-
-/* ---------- sandbox ---------- */
-.libgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 6px; }
-.libadd { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; border: 1px solid var(--paper-edge); background: var(--paper); color: var(--paper-fg); border-radius: 6px; padding: 6px 8px; text-align: left; font-size: 13px; }
-.libadd span { color: var(--c-target); font-weight: 700; white-space: nowrap; }
-.libadd:hover { border-color: var(--accent); }
-.pantry-row { display: grid; gap: 4px; }
-.pchip { all: unset; cursor: pointer; border-radius: 5px; }
-.pchip .chunk { display: inline-block; font-size: 13px; padding: 1px 6px; }
-.pchip:hover .chunk { border-color: var(--accent); }
-.pchip:focus-visible { outline: 2px solid var(--focus); }
-details > summary { cursor: pointer; list-style-position: inside; }
-
-textarea { width: 100%; min-height: 160px; font-family: var(--f-mono); font-size: 12px; background: var(--paper); color: var(--paper-fg); border: 1px solid var(--edge); border-radius: 8px; padding: 8px; }
-select { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--edge); background: var(--paper); color: var(--paper-fg); }
-.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; align-items: start; }
-table.pat { border-collapse: collapse; font-size: 13px; width: 100%; }
-table.pat td, table.pat th { border-bottom: 1px solid var(--edge); padding: 5px 6px; text-align: left; vertical-align: top; }
+/* ---------- keywords ---------- */
+.kwgrid { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.kwmain { flex: 999 1 640px; min-width: 0; display: grid; gap: 14px; }
+.kwside { flex: 1 1 300px; min-width: 0; display: grid; gap: 14px; }
 .tblwrap { overflow-x: auto; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+table.kw { border-collapse: collapse; width: 100%; min-width: 760px; }
+table.kw th { text-align: left; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); padding: 6px; border-bottom: 1px solid var(--line); }
+table.kw td { padding: 4px 6px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+table.kw input, table.kw select { width: 100%; }
+table.kw td.n { font-family: var(--f-mono); font-size: 13px; color: var(--ink-2); padding-top: 12px; text-align: right; }
+.ring { position: relative; width: 260px; height: 260px; margin: 6px auto; max-width: 100%; }
+.ring .dot { position: absolute; width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; text-align: center; font-weight: 700; font-size: 13px; border: 2px solid rgba(0,0,0,.2); padding: 4px; overflow-wrap: anywhere; }
+.ring .hole { position: absolute; left: 50px; top: 50px; width: 160px; height: 160px; border-radius: 50%; border: 2px dashed var(--line); }
+.colrow { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-2); }
+.colrow input[type="color"] { width: 40px; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+.colrow .rel { grid-column: 1 / -1; font-size: 13px; color: var(--ink-2); }
+.colrow .about { grid-column: 1 / -1; }
+.bars { display: grid; gap: 8px; }
+.bars .b { display: grid; grid-template-columns: 80px minmax(0, 1fr) 70px; gap: 8px; align-items: center; font-size: 14px; }
+.bars .t { height: 10px; border-radius: 5px; background: var(--panel-2); overflow: hidden; border: 1px solid var(--line-2); }
+.bars .t i { display: block; height: 100%; }
+.bars .v { font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); }
+
+/* ---------- save ---------- */
+.savegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; align-items: start; }
+.savegrid textarea { font-family: var(--f-mono); font-size: 12px; min-height: 200px; }
+
+@media (max-width: 520px) {
+  .card { width: calc(50% - 5px); min-width: 150px; }
+  .card.enemy, .card.big { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
-<div class="wrap">
-  <header class="top">
-    <div class="mark">Cut<span class="cut">/</span>the Deck</div>
-    <nav class="tabs" id="tabs"></nav>
-    <div class="status" id="status"></div>
-  </header>
-  <main id="main"><p class="sub">Loading cards…</p></main>
-</div>
-<div id="toast" hidden></div>
-<script type="module" src="ui/app.js"></script>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><b>Cut the Deck</b><input id="packname" class="packname" type="text" aria-label="Pack name" data-bind="name"></div>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#table" data-tab="table">Table</a>
+      <a href="#cards" data-tab="cards">Cards</a>
+      <a href="#keywords" data-tab="keywords">Keywords &amp; colors</a>
+      <a href="#save" data-tab="save">Save &amp; share</a>
+    </nav>
+    <div class="savestate" id="savestate"><i></i><span>Saved in this browser</span></div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+<div id="editbar" hidden></div>
+<div id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+'use strict';
+const STORE_KEY = 'ctd-proxies-v1';
+const FORMAT = 'cut-the-deck-proxies';
+const COLORLESS_HEX = '#8a8f94';
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = (sel) => document.querySelector(sel);
+
+// ---------------------------------------------------------------- starter set
+function starter() {
+  const K = (word, color, opposite, meaning) => ({ id: uid(), word, color, opposite, meaning });
+  const C = (name, type, cost, copies, text, hp) => ({ id: uid(), name, type, cost, copies, text, hp: hp || 0, colors: [], notes: '' });
+  return {
+    format: FORMAT, version: 1, name: 'Base set',
+    colors: [
+      { id: 'black', name: 'Black', hex: '#2b2f36', about: 'Knowledge. Sees what is coming and rewrites the record.' },
+      { id: 'blue', name: 'Blue', hex: '#2754b5', about: 'Order. Builds slowly and repeats reliably.' },
+      { id: 'green', name: 'Green', hex: '#3f7d3a', about: 'Growth. Gets stronger over turns and heals what was spent.' },
+      { id: 'red', name: 'Red', hex: '#c7392a', about: 'Force. Big hits that land on everyone and chain together.' },
+      { id: 'yellow', name: 'Yellow', hex: '#d99a0b', about: 'Chaos. Cheap edits, random targets, energy now and worry later.' },
+      { id: 'purple', name: 'Purple', hex: '#6a2c8a', about: 'Sacrifice. Hurts you to hurt them worse, and what it inflicts lingers.' },
+    ],
+    keywords: [
+      K('Deal', '', 'Heal', 'Deal damage. Block absorbs it first.'),
+      K('Heal', 'green', 'Deal', 'Restore HP, up to your max.'),
+      K('Block', 'blue', 'Lose Block', 'Absorbs damage until your next turn.'),
+      K('Lose Block', '', 'Block', 'Remove that much Block.'),
+      K('Draw', 'black', 'Discard', 'Draw cards. The deck does not reshuffle mid-turn.'),
+      K('Discard', '', 'Draw', 'Discard cards at random from your hand.'),
+      K('Gain Energy', 'yellow', 'Lose Energy', 'Get extra energy this turn.'),
+      K('Lose Energy', '', 'Gain Energy', 'Lose energy this turn.'),
+      K('Apply Weak', 'purple', 'Apply Strength', 'Weak: deals 25% less damage. Goes down by 1 each turn.'),
+      K('Apply Strength', 'green', 'Apply Weak', 'Strength: +1 damage per hit for each stack.'),
+      K('Poison', 'purple', 'Regen', 'At the start of its turn it loses 1 HP per Poison (ignores Block), then Poison goes down by 1.'),
+      K('Regen', 'green', 'Poison', 'At the start of your turn heal 1 per Regen, then Regen goes down by 1.'),
+      K('Siphon', 'purple', '', 'Deal that much, then heal whatever got past Block.'),
+      K('Build', 'blue', '', 'Each time you play this card, it repeats once more than last time.'),
+      K('Combo', 'red', '', 'Only works if you already played an attack this turn.'),
+      K('Redact', 'black', '', 'Cancel an enemy’s next attack on your cards’ text.'),
+      K('to an enemy', '', 'to yourself', 'Targets one enemy you choose.'),
+      K('to yourself', 'purple', 'to an enemy', 'Targets you.'),
+      K('to ALL enemies', 'red', 'to an enemy', 'Hits every enemy.'),
+      K('to a random enemy', 'yellow', 'to ALL enemies', 'Picks an enemy at random.'),
+      K('once', '', 'twice', ''),
+      K('twice', 'blue', 'once', 'Do it two times.'),
+      K('three times', 'blue', 'once', 'Do it three times.'),
+      K('if you have Block', 'blue', 'unless you have Block', ''),
+      K('unless you have Block', 'blue', 'if you have Block', ''),
+      K('if the enemy is Weak', 'purple', 'unless the enemy is Weak', ''),
+      K('unless the enemy is Weak', 'purple', 'if the enemy is Weak', ''),
+      K('if this is your first card', 'black', 'unless this is your first card', 'Only if you have not played a card yet this turn.'),
+      K('unless this is your first card', 'black', 'if this is your first card', ''),
+      K('When drawn', 'purple', 'When played', 'Happens as soon as you draw it.'),
+      K('When played', '', 'When drawn', ''),
+      K('At end of turn', 'green', 'When drawn', 'Happens if it is still in your hand when your turn ends.'),
+      K('When pasted', 'yellow', 'When cut', 'Happens when this text is glued onto a card.'),
+      K('When cut', '', 'When pasted', 'Happens when this text is cut off a card.'),
+      K('Attack', '', '', 'The enemy hits you for that much.'),
+      K('Black out', 'black', '', 'Mute a word and hide it.'),
+      K('Typo', '', '', '±1 to a number.'),
+      K('Invert', '', '', 'Flip a word to its opposite.'),
+      K('Mute', '', '', 'A muted word is ignored.'),
+    ],
+    cards: [
+      C('Strike', 'Card', '1', 5, 'Deal 6 to an enemy.'),
+      C('Defend', 'Card', '1', 4, 'Block 5.'),
+      C('Jab', 'Card', '1', 1, 'Deal 3 twice to an enemy.'),
+      C('Reckless Swing', 'Card', '2', 0, 'Deal 9 to ALL enemies.\nDeal 6 to yourself.'),
+      C('Second Wind', 'Card', '1', 0, 'When drawn: Draw 2.\nWhen drawn: Discard 2.'),
+      C('Cheap Shot', 'Card', '2', 0, 'Deal 4 three times to a random enemy if this is your first card.'),
+      C('Overcharge', 'Card', '1', 0, 'Gain Energy 2.\nApply Weak 2 to yourself.'),
+      C('Bulwark', 'Card', '1', 0, 'Block 9.\nAt end of turn: Lose Block 4.'),
+      C('Blood Price', 'Card', '1', 0, 'Draw 3.\nDeal 4 to yourself.'),
+      C('Shield Bash', 'Card', '2', 0, 'Deal 8 to an enemy if you have Block.\nBlock 3.'),
+      C('Venom Ink', 'Card', '1', 0, 'Poison 3 to an enemy.\nDraw 1 if the enemy is Weak.'),
+      C('Leech', 'Card', '2', 0, 'Siphon 5 to an enemy.\nPoison 1 to an enemy.'),
+      C('Scaffold', 'Card', '1', 0, 'Build.\nBlock 3.'),
+      C('Follow-Through', 'Card', '1', 0, 'Combo: Deal 7 to an enemy.'),
+      C('Retraction', 'Card', '1', 0, 'Redact.\nDraw 1.'),
+      C('Cut-Up', 'Card', '1', 0, 'When pasted: Gain Energy 1.\nDeal 3 to a random enemy.'),
+      C('Redactor', 'Enemy', '', 0, 'Attack 6.\nBlack out a word on a card in your hand.\nAttack 4. Block 4.', 30),
+      C('Inverter', 'Enemy', '', 0, 'Invert the verb on a card in your hand.\nAttack 8.\nAttack 5. Block 5.', 34),
+      C('Typo Imp', 'Enemy', '', 0, 'Attack 3. Typo a number on a card in your hand.\nAttack 5.', 14),
+      C('Censor', 'Enemy', '', 0, 'Mute every number above 5 in your deck.\nAttack 10.\nAttack 6 twice.\nBlock 12. Apply Strength 2 to yourself.', 70),
+      C('Plagiarist', 'Enemy', '', 0, 'Attack 12.\nBlock 10. Apply Strength 1 to yourself.\nCopy your most expensive card and play it at you.', 150),
+    ],
+    setup: { handSize: 5, invertPivot: 10, trackers: [{ name: 'HP', start: 60 }, { name: 'Energy', start: 3 }, { name: 'Block', start: 0 }, { name: 'Ink', start: 3 }] },
+  };
+}
+
+function emptyTable() {
+  return { inst: {}, zones: { deck: [], hand: [], play: [], discard: [], gone: [], enemies: [] }, clipboard: [], trackers: [], log: [], turn: 1 };
+}
+
+// ---------------------------------------------------------------- state
+let data, table;
+let undoStack = [];
+const ui = { view: 'table', selCard: null, selTok: null, clipSel: null, editCardId: null, libFilter: 'all', libColor: '', search: '', kwSearch: '', newGame: false, enemyPick: {}, confirm: null, importMode: 'replace', includeTable: true, savedAt: null };
+let downloads = null;
+
+function normalizeData(d) {
+  const base = starter();
+  const out = {
+    format: FORMAT, version: 1,
+    name: typeof d.name === 'string' && d.name ? d.name : 'Imported set',
+    colors: Array.isArray(d.colors) && d.colors.length ? d.colors.map((c, i) => ({ id: String(c.id || 'c' + i), name: String(c.name || 'Color ' + (i + 1)), hex: /^#[0-9a-f]{6}$/i.test(c.hex) ? c.hex : '#888888', about: String(c.about || '') })) : base.colors,
+    keywords: Array.isArray(d.keywords) ? d.keywords.filter((k) => k && k.word).map((k) => ({ id: String(k.id || uid()), word: String(k.word), color: String(k.color || ''), opposite: String(k.opposite || ''), meaning: String(k.meaning || '') })) : [],
+    cards: Array.isArray(d.cards) ? d.cards.filter((c) => c && c.name != null).map((c) => ({ id: String(c.id || uid()), name: String(c.name), type: c.type === 'Enemy' ? 'Enemy' : 'Card', cost: String(c.cost ?? ''), copies: Math.max(0, parseInt(c.copies, 10) || 0), text: String(c.text || ''), hp: Math.max(0, parseInt(c.hp, 10) || 0), colors: Array.isArray(c.colors) ? c.colors.map(String) : [], notes: String(c.notes || '') })) : [],
+    setup: {
+      handSize: Math.max(0, parseInt(d.setup?.handSize, 10) || 5),
+      invertPivot: parseInt(d.setup?.invertPivot, 10) || 10,
+      trackers: Array.isArray(d.setup?.trackers) ? d.setup.trackers.map((t) => ({ name: String(t.name || 'Counter'), start: parseInt(t.start, 10) || 0 })) : base.setup.trackers,
+    },
+  };
+  return out;
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      data = normalizeData(s.data || {});
+      table = s.table && s.table.zones ? s.table : null;
+    }
+  } catch (e) { /* storage unavailable or corrupt: start fresh */ }
+  if (!data) data = starter();
+  rebuildIndex();
+  if (!table) { table = emptyTable(); newGame(enemyCards().slice(0, 1).map((c) => c.id), true); }
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ data, table }));
+      ui.savedAt = new Date();
+      setSaveState('Saved in this browser', true);
+    } catch (e) { setSaveState('Not saved: this browser blocked storage. Export a save file.', false); }
+  }, 300);
+}
+function setSaveState(text, ok) {
+  const el = $('#savestate');
+  el.innerHTML = `<i style="background:${ok ? 'var(--ok)' : 'var(--danger)'}"></i><span>${esc(text)}</span>`;
+}
+function pushUndo() {
+  undoStack.push(JSON.stringify({ data, table }));
+  if (undoStack.length > 60) undoStack.shift();
+}
+function undo() {
+  const s = undoStack.pop();
+  if (!s) return toast('Nothing to undo.');
+  const o = JSON.parse(s);
+  data = o.data; table = o.table;
+  ui.selTok = null; ui.selCard = null; ui.clipSel = null;
+  rebuildIndex(); scheduleSave(); render();
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+function logMsg(msg) {
+  table.log.push(`T${table.turn} · ${msg}`);
+  if (table.log.length > 80) table.log.shift();
+}
+
+// ---------------------------------------------------------------- words
+let kwMap = new Map(); let phrases = []; let colorMap = new Map();
+function rawTokens(line) { return line.match(/~[^~]+~|[A-Za-z0-9±+\-−’']+|[^\sA-Za-z0-9]/g) || []; }
+function rebuildIndex() {
+  kwMap = new Map(); colorMap = new Map();
+  data.colors.forEach((c, i) => colorMap.set(c.id, { ...c, idx: i }));
+  for (const k of data.keywords) if (k.word.trim()) kwMap.set(k.word.trim().toLowerCase(), k);
+  phrases = [...kwMap.values()].map((k) => ({ k, toks: rawTokens(k.word.trim()).map((t) => t.toLowerCase()) })).filter((p) => p.toks.length).sort((a, b) => b.toks.length - a.toks.length);
+}
+function tokenize(text) {
+  const lines = String(text || '').split('\n').map((line) => {
+    const raw = rawTokens(line); const out = []; let i = 0;
+    while (i < raw.length) {
+      const t = raw[i];
+      if (t.length > 2 && t[0] === '~' && t[t.length - 1] === '~') { out.push({ w: t.slice(1, -1), m: true }); i++; continue; }
+      let hit = null;
+      for (const p of phrases) {
+        const n = p.toks.length;
+        if (i + n > raw.length) continue;
+        let ok = true;
+        for (let j = 0; j < n; j++) if (raw[i + j].toLowerCase() !== p.toks[j]) { ok = false; break; }
+        if (ok) { hit = n; break; }
+      }
+      if (hit) { out.push({ w: raw.slice(i, i + hit).join(' ') }); i += hit; } else { out.push({ w: t }); i++; }
+    }
+    return out;
+  }).filter((l) => l.length);
+  return lines.length ? lines : [[]];
+}
+const NO_SPACE_BEFORE = /^[.,:;!?)]$/;
+const isPunct = (w) => /^[^\sA-Za-z0-9±~−]$/.test(w);
+const isNum = (w) => /^([0-9]+|X)$/.test(w);
+function joinLine(line) {
+  let s = '';
+  line.forEach((t, i) => {
+    const text = t.m ? `~${t.w}~` : t.w;
+    if (i > 0 && !NO_SPACE_BEFORE.test(t.w) && line[i - 1].w !== '(') s += ' ';
+    s += text;
+  });
+  return s;
+}
+const serialize = (lines) => lines.map(joinLine).filter((l) => l.length).join('\n');
+const kwOf = (w) => kwMap.get(String(w).toLowerCase());
+const hexOf = (colorId) => (colorMap.get(colorId)?.hex) || COLORLESS_HEX;
+function opposite(w) {
+  if (w === 'X') return '1';
+  if (/^[0-9]+$/.test(w)) { const n = parseInt(w, 10); const p = data.setup.invertPivot; return n <= p ? String(p - n) : null; }
+  const k = kwOf(w);
+  if (k && k.opposite.trim()) { const o = kwOf(k.opposite.trim()); return o ? o.word : k.opposite.trim(); }
+  for (const kk of kwMap.values()) if (kk.opposite.trim().toLowerCase() === String(w).toLowerCase()) return kk.word;
+  return null;
+}
+function colorsOfLines(lines) {
+  const set = new Set();
+  for (const l of lines) for (const t of l) { if (t.m) continue; const k = kwOf(t.w); if (k && colorMap.has(k.color)) set.add(k.color); }
+  return [...set].sort((a, b) => colorMap.get(a).idx - colorMap.get(b).idx);
+}
+function cardColors(card, lines) { return card.colors && card.colors.length ? card.colors.filter((c) => colorMap.has(c)) : colorsOfLines(lines); }
+function opposites(colorId) {
+  const c = colorMap.get(colorId); const n = data.colors.length;
+  if (!c || n < 2) return null;
+  return data.colors[(c.idx + Math.floor(n / 2)) % n].id;
+}
+
+// ---------------------------------------------------------------- table ops
+const cardById = (id) => data.cards.find((c) => c.id === id);
+const enemyCards = () => data.cards.filter((c) => c.type === 'Enemy');
+function makeInst(card) {
+  const iid = 'i' + uid();
+  table.inst[iid] = { iid, cardId: card.id, name: card.name, lines: tokenize(card.text), counters: card.type === 'Enemy' ? { HP: card.hp } : {}, step: 0 };
+  return iid;
+}
+function zoneOf(iid) { for (const z in table.zones) if (table.zones[z].includes(iid)) return z; return null; }
+function moveInst(iid, zone, top) {
+  for (const z in table.zones) table.zones[z] = table.zones[z].filter((x) => x !== iid);
+  if (top) table.zones[zone].unshift(iid); else table.zones[zone].push(iid);
+}
+function shuffle(a) { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
+function drawCards(n) {
+  let drawn = 0;
+  for (let k = 0; k < n; k++) {
+    const iid = table.zones.deck.shift();
+    if (!iid) break;
+    table.zones.hand.push(iid); drawn++;
+  }
+  return drawn;
+}
+function resetTrackers() { table.trackers = data.setup.trackers.map((t) => ({ name: t.name, value: t.start })); }
+function trackerByName(name) { return table.trackers.find((t) => t.name.toLowerCase() === name.toLowerCase()); }
+function newGame(enemyIds, quiet) {
+  const clip = table ? table.clipboard : [];
+  table = emptyTable(); table.clipboard = clip;
+  for (const c of data.cards) if (c.type !== 'Enemy') for (let k = 0; k < c.copies; k++) table.zones.deck.push(makeInst(c));
+  table.zones.deck = shuffle(table.zones.deck);
+  for (const id of enemyIds) { const c = cardById(id); if (c) table.zones.enemies.push(makeInst(c)); }
+  resetTrackers();
+  drawCards(data.setup.handSize);
+  logMsg(`New game: ${table.zones.deck.length + table.zones.hand.length} cards${enemyIds.length ? ' vs ' + enemyIds.map((id) => cardById(id)?.name).filter(Boolean).join(', ') : ''}.`);
+  if (!quiet) toast('New game dealt.');
+}
+function endTurn() {
+  const n = table.zones.hand.length;
+  table.zones.discard.push(...table.zones.hand); table.zones.hand = [];
+  const e = trackerByName('Energy'); const se = data.setup.trackers.find((t) => t.name.toLowerCase() === 'energy');
+  if (e && se) e.value = se.start;
+  const b = trackerByName('Block'); if (b) b.value = 0;
+  for (const iid of table.zones.enemies) { const it = table.inst[iid]; if (it) it.step = (it.step + 1) % Math.max(1, it.lines.length); }
+  table.turn++;
+  let shuffled = false;
+  if (table.zones.deck.length < data.setup.handSize && table.zones.discard.length) {
+    table.zones.deck = table.zones.deck.concat(shuffle(table.zones.discard)); table.zones.discard = []; shuffled = true;
+  }
+  drawCards(data.setup.handSize);
+  logMsg(`Turn ${table.turn}: discarded ${n}${shuffled ? ', reshuffled' : ''}, drew ${table.zones.hand.length}.`);
+}
+
+// ---------------------------------------------------------------- word edit ops (table instance or library card)
+function getLines(scope, id) { return scope === 'table' ? table.inst[id].lines : tokenize(cardById(id).text); }
+function setLines(scope, id, lines) {
+  const clean = lines.filter((l) => l.length);
+  if (scope === 'table') table.inst[id].lines = clean.length ? clean : [[]];
+  else { cardById(id).text = serialize(clean); const ta = $('#cf-text'); if (ta) ta.value = cardById(id).text; }
+}
+function nameOf(scope, id) { return scope === 'table' ? table.inst[id].name : cardById(id).name; }
+function clipPick() { if (!table.clipboard.length) return -1; return ui.clipSel != null && ui.clipSel < table.clipboard.length ? ui.clipSel : table.clipboard.length - 1; }
+function wordOp(op) {
+  const s = ui.selTok; if (!s) return;
+  const lines = getLines(s.scope, s.id); const line = lines[s.li]; const tok = line && line[s.ti];
+  if (!tok && !['pasteend'].includes(op)) return;
+  pushUndo();
+  const src = nameOf(s.scope, s.id);
+  if (op === 'cut' || op === 'copy') {
+    table.clipboard.push({ w: tok.w, from: src });
+    ui.clipSel = table.clipboard.length - 1;
+    if (op === 'cut') { line.splice(s.ti, 1); ui.selTok = null; if (s.scope === 'table') logMsg(`Cut “${tok.w}” from ${src}.`); }
+    else toast(`Copied “${tok.w}”.`);
+  } else if (op === 'mute') {
+    tok.m = !tok.m; if (s.scope === 'table') logMsg(`${tok.m ? 'Muted' : 'Unmuted'} “${tok.w}” on ${src}.`);
+  } else if (op === 'invert') {
+    const o = opposite(tok.w);
+    if (!o) { undoStack.pop(); return toast(`“${tok.w}” has no opposite. Add one in Keywords & colors.`); }
+    if (s.scope === 'table') logMsg(`Inverted “${tok.w}” → “${o}” on ${src}.`);
+    tok.w = o;
+  } else if (op === 'before' || op === 'after' || op === 'replace') {
+    const ci = clipPick(); if (ci < 0) { undoStack.pop(); return toast('Your clipboard is empty. Cut or copy a word first.'); }
+    const c = table.clipboard.splice(ci, 1)[0]; ui.clipSel = null;
+    const nt = { w: c.w, from: c.from !== src ? c.from : undefined };
+    if (op === 'replace') { table.clipboard.push({ w: tok.w, from: src }); line.splice(s.ti, 1, nt); }
+    else { const at = op === 'before' ? s.ti : s.ti + 1; line.splice(at, 0, nt); ui.selTok = { ...s, ti: at }; }
+    if (s.scope === 'table') logMsg(`Pasted “${c.w}” on ${src}.`);
+  }
+  setLines(s.scope, s.id, lines);
+  if (ui.selTok) { const L = getLines(s.scope, s.id); if (!L[ui.selTok.li] || !L[ui.selTok.li][ui.selTok.ti]) ui.selTok = null; }
+  scheduleSave(); rerender();
+}
+function pasteEnd(scope, id, newLine) {
+  const ci = clipPick(); if (ci < 0) return toast('Your clipboard is empty. Cut or copy a word first.');
+  pushUndo();
+  const lines = getLines(scope, id); const c = table.clipboard.splice(ci, 1)[0]; ui.clipSel = null;
+  const src = nameOf(scope, id); const nt = { w: c.w, from: c.from !== src ? c.from : undefined };
+  if (newLine || !lines.length || !lines[lines.length - 1].length) lines.push([nt]);
+  else { const last = lines[lines.length - 1]; const p = last.length && isPunct(last[last.length - 1].w) ? last.length - 1 : last.length; last.splice(p, 0, nt); }
+  setLines(scope, id, lines);
+  if (scope === 'table') logMsg(`Pasted “${c.w}” on ${src}.`);
+  scheduleSave(); rerender();
+}
+
+// ---------------------------------------------------------------- render helpers
+function bandStyle(cols) {
+  if (!cols.length) return `background: repeating-linear-gradient(135deg, ${COLORLESS_HEX} 0 6px, #c4c7ca 6px 12px)`;
+  if (cols.length === 1) return `background: ${hexOf(cols[0])}`;
+  const step = 100 / cols.length;
+  return 'background: linear-gradient(90deg, ' + cols.map((c, i) => `${hexOf(c)} ${i * step}% ${(i + 1) * step}%`).join(', ') + ')';
+}
+function lineHTML(line, scope, id, li, interactive) {
+  if (!line.length) return '<span class="empty-line">blank line</span>';
+  let h = '';
+  line.forEach((t, ti) => {
+    if (ti > 0 && !NO_SPACE_BEFORE.test(t.w) && line[ti - 1].w !== '(') h += ' ';
+    if (isPunct(t.w)) { h += esc(t.w); return; }
+    const k = kwOf(t.w);
+    const cls = ['tok']; let style = ''; let title = '';
+    if (k) { cls.push('kw'); style = ` style="--kc:${hexOf(k.color)}"`; title = k.meaning || k.word; }
+    if (isNum(t.w)) cls.push('num');
+    if (t.m) { cls.push('m'); title = 'Muted: ' + t.w; }
+    if (t.from) { cls.push('slip'); title = (title ? title + ' · ' : '') + 'Pasted from ' + t.from; }
+    const s = ui.selTok;
+    if (s && s.scope === scope && s.id === id && s.li === li && s.ti === ti) cls.push('on');
+    if (interactive) h += `<button type="button" class="${cls.join(' ')}"${style} data-act="tok" data-scope="${scope}" data-id="${esc(id)}" data-li="${li}" data-ti="${ti}"${title ? ` title="${esc(title)}"` : ''}>${esc(t.w)}</button>`;
+    else h += `<span class="${cls.join(' ')}"${style}${title ? ` title="${esc(title)}"` : ''}>${esc(t.w)}</span>`;
+  });
+  return h;
+}
+function cardHTML(o) {
+  const card = o.card; const lines = o.lines; const cols = cardColors(card, lines);
+  const enemy = card.type === 'Enemy';
+  const typeLabel = (enemy ? 'Enemy' : 'Card') + ' · ' + (cols.length ? cols.map((c) => colorMap.get(c).name).join(' / ') : 'Colorless') + (card.colors && card.colors.length ? '' : '');
+  const textLines = lines.map((l, li) => `<div class="ln${enemy && o.step === li ? ' now' : ''}">${lineHTML(l, o.scope, o.id, li, o.interactive)}</div>`).join('');
+  let ctrs = '';
+  if (o.counters) {
+    ctrs = Object.entries(o.counters).map(([n, v]) => `<span class="ctr${n === 'HP' ? ' hp' : ''}"><span>${esc(n)}</span><button type="button" data-act="ctr" data-id="${esc(o.id)}" data-name="${esc(n)}" data-d="-1" aria-label="${esc(n)} minus 1">−</button><b>${esc(v)}</b><button type="button" data-act="ctr" data-id="${esc(o.id)}" data-name="${esc(n)}" data-d="1" aria-label="${esc(n)} plus 1">+</button>${n === 'HP' ? '' : `<button type="button" data-act="ctrdel" data-id="${esc(o.id)}" data-name="${esc(n)}" aria-label="Remove ${esc(n)}">×</button>`}</span>`).join('');
+  }
+  const tags = [];
+  if (card.colors && card.colors.length) {
+    const own = new Set(card.colors);
+    for (const c of colorsOfLines(lines)) if (!own.has(c) && [...own].some((oc) => opposites(oc) === c)) tags.push(`<span class="tag clash">Clashes: ${esc(colorMap.get(c).name)}</span>`);
+  }
+  if (lines.some((l) => l.some((t) => t.from))) tags.push('<span class="tag">Pasted</span>');
+  if (lines.some((l) => l.some((t) => t.m))) tags.push('<span class="tag">Muted words</span>');
+  const step = enemy && o.scope === 'table' ? `<div class="estep row"><button type="button" class="btn small" data-act="step" data-id="${esc(o.id)}" data-d="-1" aria-label="Previous intent">◀</button><span class="help">Intent ${o.step + 1} of ${lines.length}</span><button type="button" class="btn small" data-act="step" data-id="${esc(o.id)}" data-d="1" aria-label="Next intent">▶</button></div>` : '';
+  return `<div class="card${enemy ? ' enemy' : ''}${o.big ? ' big' : ''}${o.selected ? ' sel' : ''}" data-scope="${o.scope}" data-id="${esc(o.id)}"${o.drag ? ' draggable="true"' : ''}>
+    <div class="band" style="${bandStyle(cols)}"></div>
+    <div class="chead"><button type="button" class="cname" data-act="selcard" data-scope="${o.scope}" data-id="${esc(o.id)}">${esc(card.name || 'Untitled')}</button>${card.cost !== '' && !enemy ? `<span class="cost" title="Cost">${esc(card.cost)}</span>` : ''}</div>
+    <div class="ctype">${esc(typeLabel)}</div>
+    <div class="ctext">${textLines}</div>
+    ${ctrs ? `<div class="ctrs">${ctrs}</div>` : ''}
+    ${step}
+    ${tags.length ? `<div class="tags">${tags.join('')}</div>` : ''}
+  </div>`;
+}
+function instHTML(iid, opts = {}) {
+  const it = table.inst[iid]; if (!it) return '';
+  const card = cardById(it.cardId) || { name: it.name, type: 'Card', cost: '', colors: [] };
+  return cardHTML({ card: { ...card, name: it.name }, lines: it.lines, scope: 'table', id: iid, interactive: true, counters: it.counters, step: it.step, drag: true, selected: ui.selCard === iid, ...opts });
+}
+function colorDots(cols) { return `<span class="dots">${cols.length ? cols.map((c) => `<i style="background:${hexOf(c)}"></i>`).join('') : `<i style="background:${COLORLESS_HEX}"></i>`}</span>`; }
+
+// ---------------------------------------------------------------- views
+function render() {
+  document.querySelectorAll('nav.tabs a').forEach((a) => { if (a.dataset.tab === ui.view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const pn = $('#packname'); if (document.activeElement !== pn) pn.value = data.name;
+  const main = $('#main');
+  if (ui.view === 'table') main.innerHTML = viewTable();
+  else if (ui.view === 'cards') { main.innerHTML = viewCards(); renderLibList(); renderLibPreview(); }
+  else if (ui.view === 'keywords') main.innerHTML = viewKeywords();
+  else main.innerHTML = viewSave();
+  renderEditBar();
+}
+function rerender() {
+  if (ui.view === 'cards') { renderLibList(); renderLibPreview(); renderEditBar(); }
+  else render();
+}
+
+function viewTable() {
+  const z = table.zones;
+  const trk = table.trackers.map((t, i) => `<span class="trk"><span>${esc(t.name)}</span><button type="button" data-act="trk" data-i="${i}" data-d="-1" aria-label="${esc(t.name)} minus 1">−</button><b>${esc(t.value)}</b><button type="button" data-act="trk" data-i="${i}" data-d="1" aria-label="${esc(t.name)} plus 1">+</button></span>`).join('');
+  const enemies = enemyCards();
+  const ng = ui.newGame ? `<section class="panel newgame" aria-label="New game">
+      <div class="row" style="justify-content: space-between;"><h2>New game</h2><button type="button" class="btn small" data-act="newgame">Close</button></div>
+      <p class="sub" style="margin-top:4px">Your deck is every card with copies set on the Cards tab (${data.cards.filter((c) => c.type !== 'Enemy').reduce((s, c) => s + c.copies, 0)} cards). Pick who you fight:</p>
+      <div class="checks" style="margin-top:8px">${enemies.map((c) => `<label><input type="checkbox" data-pick="${esc(c.id)}"${ui.enemyPick[c.id] ? ' checked' : ''}> ${esc(c.name)} <span class="help">${c.hp} HP</span></label>`).join('') || '<span class="help">No enemy cards yet. Make one on the Cards tab (type: Enemy).</span>'}</div>
+      <div class="row" style="margin-top:10px"><button type="button" class="btn primary" data-act="startgame">Deal</button><span class="help">Your clipboard carries over.</span></div>
+    </section>` : '';
+  const pile = (id, title, hint, extra) => `<section class="zone pile" data-zone="${id}" aria-label="${title}"><div class="zh"><h3 class="label">${title}</h3><span class="count">${z[id].length}</span></div>${hint ? `<div class="help">${hint}</div>` : ''}${extra || ''}</section>`;
+  const clip = table.clipboard.map((c, i) => { const k = kwOf(c.w); return `<span class="clip${k ? ' kw' : ''}${ui.clipSel === i ? ' on' : ''}"${k ? ` style="--kc:${hexOf(k.color)}"` : ''}><button type="button" data-act="clip" data-i="${i}" title="${esc(c.from ? 'From ' + c.from : 'Written by hand')}" aria-pressed="${ui.clipSel === i}">${esc(c.w)}</button><button type="button" class="x" data-act="clipdel" data-i="${i}" aria-label="Drop ${esc(c.w)}">×</button></span>`; }).join('');
+  return `
+  <div class="row" style="justify-content: space-between; align-items: flex-start; gap: 12px;">
+    <div class="trackers" aria-label="Trackers">${trk}<span class="help" style="font-family: var(--f-mono)">Turn ${table.turn}</span></div>
+    <div class="row">
+      <button type="button" class="btn" data-act="undo" ${undoStack.length ? '' : 'disabled'}>Undo</button>
+      <button type="button" class="btn" data-act="draw">Draw 1</button>
+      <button type="button" class="btn primary" data-act="endturn" title="Discard your hand, reset Energy and Block, step each enemy's intent, draw ${data.setup.handSize}">End turn</button>
+      <button type="button" class="btn" data-act="newgame">New game</button>
+    </div>
+  </div>
+  ${ng}
+  <div class="tablegrid">
+    <div class="tablemain">
+      <section class="zone" data-zone="enemies" aria-label="Enemies"><div class="zh"><h3 class="label">Enemies</h3><span class="hint">The highlighted line is what it does next. End turn steps it forward.</span></div><div class="cards">${z.enemies.map((i) => instHTML(i)).join('') || '<span class="help">No enemies. Start a new game to pick some, or drag any card here.</span>'}</div></section>
+      <section class="zone" data-zone="play" aria-label="Table"><div class="zh"><h3 class="label">On the table</h3><span class="hint">Played cards and anything you want to keep out.</span></div><div class="cards">${z.play.map((i) => instHTML(i)).join('') || '<span class="help">Drag a card here, or select it and press Play.</span>'}</div></section>
+      <section class="zone" data-zone="hand" aria-label="Hand"><div class="zh"><h3 class="label">Hand</h3><span class="hint">Click a card's name to select it, or a word to edit it.</span></div><div class="cards">${z.hand.map((i) => instHTML(i)).join('') || '<span class="help">Your hand is empty. Draw or end the turn.</span>'}</div></section>
+    </div>
+    <aside class="tableside">
+      <div class="row" style="gap: 12px; align-items: stretch;">
+        <div style="flex:1 1 120px">${pile('deck', 'Deck', '', `<div class="row"><button type="button" class="btn small" data-act="draw">Draw</button><button type="button" class="btn small" data-act="shuffle">Shuffle</button></div>`)}</div>
+        <div style="flex:1 1 120px">${pile('discard', 'Discard', '', `<div class="row"><button type="button" class="btn small" data-act="reshuffle" ${z.discard.length ? '' : 'disabled'}>Shuffle into deck</button></div>`)}</div>
+      </div>
+      ${z.discard.length ? `<details class="panel"><summary class="label">Discard pile (${z.discard.length})</summary><div class="minilist" style="margin-top:8px">${z.discard.slice().reverse().map((i) => `<button type="button" data-act="tohand" data-id="${esc(i)}">${esc(table.inst[i]?.name)} <span class="help">→ hand</span></button>`).join('')}</div></details>` : ''}
+      ${z.gone.length ? `<details class="panel" data-zone="gone"><summary class="label">Removed from game (${z.gone.length})</summary><div class="minilist" style="margin-top:8px">${z.gone.map((i) => `<button type="button" data-act="tohand" data-id="${esc(i)}">${esc(table.inst[i]?.name)} <span class="help">→ hand</span></button>`).join('')}</div></details>` : ''}
+      <section class="panel" aria-label="Clipboard">
+        <div class="row" style="justify-content: space-between;"><h3 class="label">Clipboard</h3>${table.clipboard.length ? '<button type="button" class="btn small" data-act="clipclear">Clear</button>' : ''}</div>
+        <p class="help" style="margin:6px 0 8px">Cut words land here. Pick one, then pick a word on a card and paste before, after or over it.</p>
+        <div class="clips">${clip || '<span class="help">Empty.</span>'}</div>
+        <form class="row" style="margin-top:10px" data-form="writeword"><label for="writeword" class="help" style="flex-basis:100%">Write a new word or phrase</label><input id="writeword" type="text" placeholder="e.g. Poison, 7, to ALL enemies" style="flex:1 1 140px"><button type="submit" class="btn small">Add</button></form>
+      </section>
+      <section class="panel" aria-label="Log"><h3 class="label" style="margin-bottom:6px">Log</h3><div class="log">${table.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join('') || '<div>Nothing yet.</div>'}</div></section>
+    </aside>
+  </div>`;
+}
+
+function renderEditBar() {
+  const bar = $('#editbar');
+  const s = ui.selTok;
+  const scope = s ? s.scope : (ui.selCard ? 'table' : null);
+  if (ui.view === 'table' && ui.selCard && !table.inst[ui.selCard]) ui.selCard = null;
+  if (s && (s.scope === 'table' ? !table.inst[s.id] : !cardById(s.id))) ui.selTok = null;
+  const showTable = ui.view === 'table' && (ui.selTok?.scope === 'table' || ui.selCard);
+  const showLib = ui.view === 'cards' && ui.selTok?.scope === 'lib';
+  if (!showTable && !showLib) { bar.hidden = true; bar.innerHTML = ''; return; }
+  const ci = clipPick(); const clipWord = ci >= 0 ? table.clipboard[ci].w : null;
+  let h = '<div class="wrap">';
+  if (ui.selTok) {
+    const lines = getLines(ui.selTok.scope, ui.selTok.id); const t = lines[ui.selTok.li]?.[ui.selTok.ti];
+    if (t) {
+      const opp = opposite(t.w);
+      h += `<div class="what">Word <b>“${esc(t.w)}”</b> on <b>${esc(nameOf(ui.selTok.scope, ui.selTok.id))}</b>${clipWord ? ` · pasting <b>“${esc(clipWord)}”</b>` : ''}</div>
+      <div class="grp">
+        <button type="button" class="btn" data-act="w" data-op="cut">Cut</button>
+        <button type="button" class="btn" data-act="w" data-op="copy">Copy</button>
+        <button type="button" class="btn" data-act="w" data-op="mute">${t.m ? 'Unmute' : 'Mute'}</button>
+        <button type="button" class="btn" data-act="w" data-op="invert" ${opp ? `title="Becomes “${esc(opp)}”"` : 'title="No opposite set"'}>Invert${opp ? ' → ' + esc(opp) : ''}</button>
+        <span class="sep" aria-hidden="true"></span>
+        <button type="button" class="btn" data-act="w" data-op="before" ${clipWord ? '' : 'disabled'}>Paste before</button>
+        <button type="button" class="btn" data-act="w" data-op="after" ${clipWord ? '' : 'disabled'}>Paste after</button>
+        <button type="button" class="btn" data-act="w" data-op="replace" ${clipWord ? '' : 'disabled'}>Paste over</button>
+        <span class="sep" aria-hidden="true"></span>
+        <button type="button" class="btn small" data-act="deselect">Done</button>
+      </div>`;
+    }
+  }
+  const cardId = ui.view === 'table' ? (ui.selCard || (ui.selTok?.scope === 'table' ? ui.selTok.id : null)) : null;
+  if (cardId && table.inst[cardId]) {
+    const it = table.inst[cardId]; const z = zoneOf(cardId);
+    const mv = (zone, label) => `<button type="button" class="btn small" data-act="move" data-id="${esc(cardId)}" data-zone="${zone}" ${z === zone ? 'disabled' : ''}>${label}</button>`;
+    h += `<div class="what">Card <b>${esc(it.name)}</b> · in ${esc({ deck: 'deck', hand: 'hand', play: 'play', discard: 'discard', gone: 'removed', enemies: 'enemies' }[z] || '?')}</div>
+    <div class="grp">
+      ${mv('play', 'Play')} ${mv('hand', 'To hand')} ${mv('discard', 'Discard')} <button type="button" class="btn small" data-act="move" data-id="${esc(cardId)}" data-zone="deck" data-top="1">Top of deck</button> ${mv('gone', 'Remove')}
+      <span class="sep" aria-hidden="true"></span>
+      <button type="button" class="btn small" data-act="pasteend" data-id="${esc(cardId)}" ${clipWord ? '' : 'disabled'}>Paste at end</button>
+      <button type="button" class="btn small" data-act="pasteline" data-id="${esc(cardId)}" ${clipWord ? '' : 'disabled'}>Paste as new line</button>
+      <form class="row" data-form="addctr" style="gap:4px"><label for="ctrname" class="help">Counter</label><input id="ctrname" type="text" list="kwlist" placeholder="Poison" style="width:9em"><button type="submit" class="btn small">Add</button></form>
+      <span class="sep" aria-hidden="true"></span>
+      <button type="button" class="btn small" data-act="resettext" data-id="${esc(cardId)}">Reset text</button>
+      <button type="button" class="btn small" data-act="savetext" data-id="${esc(cardId)}" title="Write this card's current text back into the library">Save text to library</button>
+      <button type="button" class="btn small" data-act="deselect">Done</button>
+    </div>
+    <datalist id="kwlist">${['HP', 'Block', 'Weak', 'Strength', ...data.keywords.map((k) => k.word)].map((w) => `<option value="${esc(w)}"></option>`).join('')}</datalist>`;
+  } else if (showLib && ui.editCardId) {
+    h += `<div class="grp"><button type="button" class="btn small" data-act="libpasteend" ${clipWord ? '' : 'disabled'}>Paste at end</button><button type="button" class="btn small" data-act="libpasteline" ${clipWord ? '' : 'disabled'}>Paste as new line</button></div>`;
+  }
+  h += '</div>';
+  bar.innerHTML = h; bar.hidden = false;
+}
+
+// ---- cards (library)
+function viewCards() {
+  if (!ui.editCardId || !cardById(ui.editCardId)) ui.editCardId = data.cards[0]?.id || null;
+  return `<div class="libgrid">
+    <section class="panel liblist" aria-label="Card library">
+      <div class="row" style="justify-content: space-between;"><h2>Cards</h2><button type="button" class="btn small primary" data-act="libnew">+ New card</button></div>
+      <label for="libsearch" class="help" style="display:block;margin-top:10px">Search</label>
+      <input id="libsearch" type="search" data-ui="search" value="${esc(ui.search)}" placeholder="Name or text" style="width:100%">
+      <div class="chips" style="margin-top:8px">
+        ${[['all', 'All'], ['deck', 'In deck'], ['Card', 'Cards'], ['Enemy', 'Enemies']].map(([f, l]) => `<button type="button" class="chip" data-act="libfilter" data-f="${f}" aria-pressed="${ui.libFilter === f}">${l}</button>`).join('')}
+      </div>
+      <div class="chips" style="margin-top:6px">
+        <button type="button" class="chip" data-act="libcolor" data-c="" aria-pressed="${ui.libColor === ''}">Any color</button>
+        ${data.colors.map((c) => `<button type="button" class="chip" data-act="libcolor" data-c="${esc(c.id)}" aria-pressed="${ui.libColor === c.id}"><i style="background:${c.hex}"></i>${esc(c.name)}</button>`).join('')}
+      </div>
+      <div id="liblist" class="items"></div>
+    </section>
+    <section class="panel libform" id="libform" aria-label="Edit card">${libFormHTML()}</section>
+    <section class="libprev" id="libprev" aria-label="Preview"></section>
+  </div>`;
+}
+function libFormHTML() {
+  const c = cardById(ui.editCardId);
+  if (!c) return '<p class="sub">No cards yet. Press New card.</p>';
+  const auto = !c.colors.length;
+  return `
+    <div class="row" style="justify-content: space-between;"><h2>Edit card</h2>
+      <div class="row"><button type="button" class="btn small" data-act="libhand">Put in my hand</button><button type="button" class="btn small" data-act="libdup">Duplicate</button><button type="button" class="btn small danger" data-act="libdel">${ui.confirm === 'del:' + c.id ? 'Click again to delete' : 'Delete'}</button></div></div>
+    <div class="fgrid">
+      <div class="field" style="grid-column: span 2"><label for="cf-name">Name</label><input id="cf-name" type="text" data-cf="name" value="${esc(c.name)}"></div>
+      <div class="field"><label for="cf-type">Type</label><select id="cf-type" data-cf="type"><option${c.type === 'Card' ? ' selected' : ''}>Card</option><option${c.type === 'Enemy' ? ' selected' : ''}>Enemy</option></select></div>
+      ${c.type === 'Enemy'
+        ? `<div class="field"><label for="cf-hp">HP</label><input id="cf-hp" type="number" min="0" data-cf="hp" value="${esc(c.hp)}"></div>`
+        : `<div class="field"><label for="cf-cost">Cost</label><input id="cf-cost" type="text" data-cf="cost" value="${esc(c.cost)}" placeholder="1, X, 2+X"></div>
+           <div class="field"><label for="cf-copies">Copies in deck</label><input id="cf-copies" type="number" min="0" data-cf="copies" value="${esc(c.copies)}"></div>`}
+    </div>
+    <div class="field"><span class="lab">Colors</span>
+      <div class="chips">
+        <button type="button" class="chip" data-act="libauto" aria-pressed="${auto}">Auto from keywords</button>
+        ${data.colors.map((col) => `<button type="button" class="chip" data-act="libcol" data-c="${esc(col.id)}" aria-pressed="${!auto && c.colors.includes(col.id)}"><i style="background:${col.hex}"></i>${esc(col.name)}</button>`).join('')}
+      </div>
+      <span class="help" id="cf-colorhint"></span>
+    </div>
+    <div class="field"><label for="cf-text">${c.type === 'Enemy' ? 'Intents, one per line (it does the next line each turn)' : 'Text, one sentence per line'}</label>
+      <textarea id="cf-text" rows="6" data-cf="text">${esc(c.text)}</textarea>
+      <span class="help">Keywords are recognized as you type and get their color. Wrap a word in ~tildes~ to mute it.</span>
+    </div>
+    <div class="field"><label for="cf-notes">Designer notes</label><textarea id="cf-notes" rows="2" data-cf="notes" placeholder="Why this card exists, what to test">${esc(c.notes)}</textarea></div>`;
+}
+function libFiltered() {
+  const q = ui.search.trim().toLowerCase();
+  return data.cards.filter((c) => {
+    if (ui.libFilter === 'deck' && !(c.type === 'Card' && c.copies > 0)) return false;
+    if ((ui.libFilter === 'Card' || ui.libFilter === 'Enemy') && c.type !== ui.libFilter) return false;
+    if (ui.libColor && !cardColors(c, tokenize(c.text)).includes(ui.libColor)) return false;
+    if (q && !(c.name.toLowerCase().includes(q) || c.text.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+function renderLibList() {
+  const el = $('#liblist'); if (!el) return;
+  const list = libFiltered();
+  const deckCount = data.cards.filter((c) => c.type === 'Card').reduce((s, c) => s + c.copies, 0);
+  el.innerHTML = `<div class="help" style="padding:2px 8px">${list.length} shown · deck is ${deckCount} cards</div>` + list.map((c) => `<button type="button" class="item${c.id === ui.editCardId ? ' on' : ''}" data-act="libsel" data-id="${esc(c.id)}">${colorDots(cardColors(c, tokenize(c.text)))}<span class="nm">${esc(c.name || 'Untitled')}</span><span class="meta">${c.type === 'Enemy' ? c.hp + ' HP' : (c.cost !== '' ? c.cost + '⚡' : '') + (c.copies ? ' ×' + c.copies : '')}</span></button>`).join('');
+}
+function renderLibPreview() {
+  const el = $('#libprev'); if (!el) return;
+  const c = cardById(ui.editCardId);
+  if (!c) { el.innerHTML = ''; return; }
+  const lines = tokenize(c.text);
+  const auto = colorsOfLines(lines);
+  const hint = $('#cf-colorhint');
+  if (hint) hint.textContent = c.colors.length ? (auto.some((x) => !c.colors.includes(x)) ? 'Its keywords also bring in: ' + auto.filter((x) => !c.colors.includes(x)).map((x) => colorMap.get(x).name).join(', ') : '') : (auto.length ? 'From keywords: ' + auto.map((x) => colorMap.get(x).name).join(', ') : 'No colored keywords, so it is colorless.');
+  const unknown = [];
+  for (const l of lines) for (const t of l) { if (!isPunct(t.w) && !isNum(t.w) && !kwOf(t.w) && /^[A-Z]/.test(t.w)) unknown.push(t.w); }
+  const clip = table.clipboard.length ? `<div class="panel" style="width:100%"><div class="label" style="margin-bottom:6px">Clipboard</div><div class="clips">${table.clipboard.map((cw, i) => `<span class="clip${ui.clipSel === i ? ' on' : ''}"><button type="button" data-act="clip" data-i="${i}" aria-pressed="${ui.clipSel === i}">${esc(cw.w)}</button><button type="button" class="x" data-act="clipdel" data-i="${i}" aria-label="Drop ${esc(cw.w)}">×</button></span>`).join('')}</div></div>` : '';
+  el.innerHTML = `<div class="label">Preview · click a word to cut, invert or paste</div>
+    ${cardHTML({ card: c, lines, scope: 'lib', id: c.id, interactive: true, big: true, step: 0 })}
+    ${unknown.length ? `<div class="warn">Not keywords yet: ${[...new Set(unknown)].map(esc).join(', ')}. <a href="#keywords" data-act="kwfrom" data-words="${esc([...new Set(unknown)].join('|'))}">Add them as keywords</a></div>` : ''}
+    ${clip}`;
+}
+
+// ---- keywords & colors
+function viewKeywords() {
+  return `<div class="kwgrid">
+    <div class="kwmain">
+      <section class="panel" aria-label="Keywords">
+        <div class="row" style="justify-content: space-between;"><div><h2>Keywords</h2><p class="sub">Words the game knows. Each one has a color, an opposite for Invert, and what it means. Cards pick them up automatically.</p></div><button type="button" class="btn primary" data-act="kwadd">+ New keyword</button></div>
+        <div class="row" style="margin: 10px 0"><label for="kwsearch" class="help">Filter</label><input id="kwsearch" type="search" data-ui="kwSearch" value="${esc(ui.kwSearch)}" placeholder="Poison, Purple, to…" style="flex:1 1 200px"></div>
+        <div class="tblwrap" id="kwtable">${kwTableHTML()}</div>
+      </section>
+      <section class="panel" aria-label="Game setup">
+        <h2>Game setup</h2>
+        <div class="fgrid" style="margin-top:10px">
+          <div class="field"><label for="sf-hand">Hand size</label><input id="sf-hand" type="number" min="0" data-sf="handSize" value="${esc(data.setup.handSize)}"></div>
+          <div class="field"><label for="sf-pivot">Numbers invert to</label><div class="row" style="flex-wrap:nowrap"><input id="sf-pivot" type="number" data-sf="invertPivot" value="${esc(data.setup.invertPivot)}" style="width:6em"><span class="help">minus the number (X becomes 1)</span></div></div>
+        </div>
+        <div class="label" style="margin-top:14px">Trackers at the start of a game</div>
+        <div style="display:grid; gap:6px; margin-top:6px">
+          ${data.setup.trackers.map((t, i) => `<div class="row"><label class="help" for="tf-n${i}">Name</label><input id="tf-n${i}" type="text" data-tf="name" data-i="${i}" value="${esc(t.name)}" style="width:10em"><label class="help" for="tf-s${i}">Starts at</label><input id="tf-s${i}" type="number" data-tf="start" data-i="${i}" value="${esc(t.start)}" style="width:6em"><button type="button" class="btn small" data-act="trkdel" data-i="${i}" aria-label="Remove ${esc(t.name)}">Remove</button></div>`).join('')}
+          <div><button type="button" class="btn small ghost" data-act="trkadd">+ Add tracker</button></div>
+        </div>
+        <p class="help" style="margin-top:8px">End turn resets trackers named Energy and Block. Changes apply from the next new game.</p>
+      </section>
+    </div>
+    <aside class="kwside">
+      <section class="panel" aria-label="Color pie">
+        <h2>Color pie</h2>
+        <p class="sub">Neighbours are allies; the color straight across is the opposite. Move a color with the arrows to change its place on the ring.</p>
+        <div id="ring">${ringHTML()}</div>
+        <div id="colorlist">${data.colors.map((c, i) => `<div class="colrow">
+          <input type="color" data-colf="hex" data-id="${esc(c.id)}" value="${esc(c.hex)}" aria-label="${esc(c.name)} color">
+          <span class="row" style="gap:2px"><button type="button" class="btn small" data-act="colup" data-i="${i}" aria-label="Move ${esc(c.name)} earlier">↑</button><button type="button" class="btn small" data-act="coldown" data-i="${i}" aria-label="Move ${esc(c.name)} later">↓</button></span>
+          <input type="text" data-colf="name" data-id="${esc(c.id)}" value="${esc(c.name)}" aria-label="Color name">
+          <span></span>
+          <input class="about" type="text" data-colf="about" data-id="${esc(c.id)}" value="${esc(c.about)}" aria-label="${esc(c.name)}: what it is about" placeholder="What this color is about">
+          <span class="rel">${relText(i)}</span>
+        </div>`).join('')}</div>
+      </section>
+      <section class="panel" aria-label="Pie health" id="health">${healthHTML()}</section>
+    </aside>
+  </div>`;
+}
+function relText(i) {
+  const n = data.colors.length; const L = data.colors[(i + n - 1) % n]; const R = data.colors[(i + 1) % n]; const O = data.colors[(i + Math.floor(n / 2)) % n];
+  return `Allies: ${esc(L.name)}, ${esc(R.name)} · Opposite: ${esc(O.name)}`;
+}
+function ringHTML() {
+  const n = data.colors.length; const r = 93, cx = 130, cy = 130, s = 74;
+  return `<div class="ring"><div class="hole" aria-hidden="true"></div>${data.colors.map((c, i) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    const light = luminance(c.hex) > 0.5;
+    return `<div class="dot" style="left:${Math.round(cx + r * Math.cos(a) - s / 2)}px; top:${Math.round(cy + r * Math.sin(a) - s / 2)}px; background:${c.hex}; color:${light ? '#111' : '#fff'}">${esc(c.name)}</div>`;
+  }).join('')}</div>`;
+}
+function luminance(hex) { const v = parseInt(hex.slice(1), 16); const r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255; return (0.299 * r + 0.587 * g + 0.114 * b) / 255; }
+function usage() {
+  const u = new Map();
+  for (const c of data.cards) for (const l of tokenize(c.text)) for (const t of l) { const k = kwOf(t.w); if (k) u.set(k.id, (u.get(k.id) || 0) + 1); }
+  return u;
+}
+function kwTableHTML() {
+  const q = ui.kwSearch.trim().toLowerCase(); const u = usage();
+  const rows = data.keywords.filter((k) => !q || k.word.toLowerCase().includes(q) || k.meaning.toLowerCase().includes(q) || (colorMap.get(k.color)?.name || 'colorless').toLowerCase().includes(q));
+  const opts = (sel) => `<option value=""${sel === '' ? ' selected' : ''}>Colorless</option>` + data.colors.map((c) => `<option value="${esc(c.id)}"${sel === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+  return `<table class="kw"><thead><tr><th scope="col" style="width:22%">Word or phrase</th><th scope="col" style="width:13%">Color</th><th scope="col" style="width:20%">Inverts to</th><th scope="col">Meaning (shown on hover)</th><th scope="col" style="width:52px">Cards</th><th scope="col" style="width:40px"><span hidden>Delete</span></th></tr></thead><tbody>
+    ${rows.map((k) => `<tr>
+      <td><input type="text" data-kf="word" data-id="${esc(k.id)}" value="${esc(k.word)}" aria-label="Word"></td>
+      <td><select data-kf="color" data-id="${esc(k.id)}" aria-label="Color of ${esc(k.word)}" style="border-left: 6px solid ${hexOf(k.color)}">${opts(k.color)}</select></td>
+      <td><input type="text" data-kf="opposite" data-id="${esc(k.id)}" value="${esc(k.opposite)}" list="kwwords" aria-label="Opposite of ${esc(k.word)}" placeholder="none"></td>
+      <td><input type="text" data-kf="meaning" data-id="${esc(k.id)}" value="${esc(k.meaning)}" aria-label="Meaning of ${esc(k.word)}"></td>
+      <td class="n">${u.get(k.id) || 0}</td>
+      <td><button type="button" class="btn small" data-act="kwdel" data-id="${esc(k.id)}" aria-label="Delete ${esc(k.word)}">${ui.confirm === 'kw:' + k.id ? 'Sure?' : '×'}</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="help">No keywords match.</td></tr>'}
+  </tbody></table><datalist id="kwwords">${data.keywords.map((k) => `<option value="${esc(k.word)}"></option>`).join('')}</datalist>`;
+}
+function healthHTML() {
+  const kw = new Map(); const cards = new Map();
+  for (const k of data.keywords) kw.set(k.color, (kw.get(k.color) || 0) + 1);
+  for (const c of data.cards) if (c.type === 'Card') for (const col of cardColors(c, tokenize(c.text))) cards.set(col, (cards.get(col) || 0) + 1);
+  const max = Math.max(1, ...data.colors.map((c) => kw.get(c.id) || 0));
+  return `<h2>Pie health</h2><p class="sub" style="margin-bottom:10px">Keywords each color owns, and how many cards carry it. A thin slice needs more before it feels like a color.</p>
+  <div class="bars">${data.colors.map((c) => `<div class="b"><span>${esc(c.name)}</span><span class="t"><i style="width:${Math.round(((kw.get(c.id) || 0) / max) * 100)}%; background:${c.hex}"></i></span><span class="v">${kw.get(c.id) || 0} kw · ${cards.get(c.id) || 0} cards</span></div>`).join('')}
+  <div class="b"><span>Colorless</span><span class="t"><i style="width:${Math.round(((kw.get('') || 0) / max) * 100)}%; background:${COLORLESS_HEX}"></i></span><span class="v">${kw.get('') || 0} kw</span></div></div>`;
+}
+
+// ---- save
+function exportObj() {
+  const o = { format: FORMAT, version: 1, exported: new Date().toISOString(), data };
+  if (ui.includeTable) o.table = table;
+  return o;
+}
+function viewSave() {
+  const json = JSON.stringify(exportObj(), null, 2);
+  return `<div class="savegrid">
+    <section class="panel" aria-label="Export">
+      <h2>Save a file</h2>
+      <p class="sub" style="margin:6px 0 10px">Everything you change is saved in this browser automatically${ui.savedAt ? ` (last at ${ui.savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})` : ''}. It stays on this device only. To move it, back it up or send it to a friend, save a file.</p>
+      <label class="row" style="margin-bottom:10px"><input type="checkbox" id="inctable" data-ui-check="includeTable"${ui.includeTable ? ' checked' : ''}> Include the game in progress</label>
+      <div class="row">
+        ${downloads ? '<button type="button" class="btn primary" data-act="export">Download save file</button>' : ''}
+        <button type="button" class="btn" data-act="copyjson">Copy save as text</button>
+      </div>
+      ${downloads ? '' : '<p class="help" style="margin-top:8px">Downloading isn’t available here, so copy the text below and paste it into a file or a message.</p>'}
+      <label for="exportjson" class="help" style="display:block;margin-top:12px">Save file contents</label>
+      <textarea id="exportjson" readonly rows="12">${esc(json)}</textarea>
+    </section>
+    <section class="panel" aria-label="Import">
+      <h2>Load a file</h2>
+      <p class="sub" style="margin:6px 0 10px">Open a save file from a friend, or paste its text.</p>
+      <div class="field"><label for="importfile">Save file (.json)</label><input id="importfile" type="file" accept=".json,application/json"></div>
+      <div class="field" style="margin-top:10px"><label for="importtext">Or paste the text</label><textarea id="importtext" rows="8" placeholder='{"format": "cut-the-deck-proxies", ...}'></textarea></div>
+      <fieldset style="border:1px solid var(--line); border-radius:8px; margin:10px 0; padding:8px 12px">
+        <legend class="help">When loading</legend>
+        <label class="row"><input type="radio" name="imode" value="replace" data-imode="replace"${ui.importMode === 'replace' ? ' checked' : ''}> Replace everything with the file</label>
+        <label class="row"><input type="radio" name="imode" value="merge" data-imode="merge"${ui.importMode === 'merge' ? ' checked' : ''}> Add its cards and keywords to mine</label>
+      </fieldset>
+      <button type="button" class="btn primary" data-act="importload">Load</button>
+      <div id="importmsg" class="help" style="margin-top:8px"></div>
+    </section>
+    <section class="panel" aria-label="Start over">
+      <h2>Start over</h2>
+      <p class="sub" style="margin:6px 0 10px">Put back the starter set of cards, keywords and colors. Save a file first if you want to keep your work.</p>
+      <button type="button" class="btn danger" data-act="reset">${ui.confirm === 'reset' ? 'Click again to reset everything' : 'Reset to starter set'}</button>
+    </section>
+  </div>`;
+}
+function importFrom(text) {
+  const msg = $('#importmsg');
+  let o;
+  try { o = JSON.parse(text); } catch (e) { msg.textContent = 'That isn’t a save file: the text is not valid JSON.'; return; }
+  const d = o && o.data ? o.data : o;
+  if (!d || !Array.isArray(d.cards)) { msg.textContent = 'That file has no cards in it, so it isn’t a Cut the Deck save.'; return; }
+  pushUndo();
+  const inc = normalizeData(d);
+  if (ui.importMode === 'replace') {
+    data = inc; rebuildIndex();
+    if (o.table && o.table.zones) table = o.table; else { table = emptyTable(); newGame([], true); }
+    msg.textContent = `Loaded “${data.name}”: ${data.cards.length} cards, ${data.keywords.length} keywords.`;
+  } else {
+    const names = new Set(data.cards.map((c) => c.name.toLowerCase()));
+    let nc = 0, nk = 0;
+    for (const c of inc.cards) { const nc2 = { ...c, id: uid(), name: names.has(c.name.toLowerCase()) ? c.name + ' (imported)' : c.name }; data.cards.push(nc2); nc++; }
+    const words = new Set(data.keywords.map((k) => k.word.toLowerCase()));
+    for (const k of inc.keywords) if (!words.has(k.word.toLowerCase())) { data.keywords.push({ ...k, id: uid(), color: colorMap.has(k.color) ? k.color : '' }); nk++; }
+    rebuildIndex();
+    msg.textContent = `Added ${nc} cards and ${nk} new keywords. Keywords you already had were kept as yours.`;
+  }
+  scheduleSave(); toast('Save file loaded.');
+}
+
+// ---------------------------------------------------------------- events
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) { const c = e.target.closest('.card[data-id]'); if (c && c.dataset.scope === 'table' && !e.target.closest('button, input')) { ui.selCard = c.dataset.id; ui.selTok = null; render(); } return; }
+  const a = b.dataset.act; const id = b.dataset.id;
+  if (a !== 'libdel' && a !== 'reset' && a !== 'kwdel') ui.confirm = null;
+  switch (a) {
+    case 'tok': {
+      const s = { scope: b.dataset.scope, id, li: +b.dataset.li, ti: +b.dataset.ti };
+      const same = ui.selTok && ui.selTok.scope === s.scope && ui.selTok.id === s.id && ui.selTok.li === s.li && ui.selTok.ti === s.ti;
+      ui.selTok = same ? null : s; if (s.scope === 'table') ui.selCard = id;
+      rerender(); break;
+    }
+    case 'selcard': if (b.dataset.scope === 'table') { ui.selCard = ui.selCard === id ? null : id; ui.selTok = null; render(); } break;
+    case 'deselect': ui.selTok = null; ui.selCard = null; rerender(); break;
+    case 'w': wordOp(b.dataset.op); break;
+    case 'clip': ui.clipSel = ui.clipSel === +b.dataset.i ? null : +b.dataset.i; rerender(); break;
+    case 'clipdel': pushUndo(); table.clipboard.splice(+b.dataset.i, 1); ui.clipSel = null; scheduleSave(); rerender(); break;
+    case 'clipclear': pushUndo(); table.clipboard = []; ui.clipSel = null; scheduleSave(); rerender(); break;
+    case 'pasteend': pasteEnd('table', id, false); break;
+    case 'pasteline': pasteEnd('table', id, true); break;
+    case 'libpasteend': pasteEnd('lib', ui.editCardId, false); break;
+    case 'libpasteline': pasteEnd('lib', ui.editCardId, true); break;
+    case 'move': pushUndo(); moveInst(id, b.dataset.zone, !!b.dataset.top); logMsg(`${table.inst[id].name} → ${b.dataset.zone === 'gone' ? 'removed' : b.dataset.zone}.`); if (b.dataset.zone !== 'hand' && b.dataset.zone !== 'play' && b.dataset.zone !== 'enemies') { ui.selCard = null; ui.selTok = null; } scheduleSave(); render(); break;
+    case 'tohand': pushUndo(); moveInst(id, 'hand'); scheduleSave(); render(); break;
+    case 'ctr': { pushUndo(); const it = table.inst[id]; it.counters[b.dataset.name] = (it.counters[b.dataset.name] || 0) + (+b.dataset.d); scheduleSave(); render(); break; }
+    case 'ctrdel': pushUndo(); delete table.inst[id].counters[b.dataset.name]; scheduleSave(); render(); break;
+    case 'resettext': { pushUndo(); const it = table.inst[id]; const c = cardById(it.cardId); if (c) { it.lines = tokenize(c.text); it.name = c.name; } ui.selTok = null; scheduleSave(); render(); break; }
+    case 'savetext': { const it = table.inst[id]; const c = cardById(it.cardId); if (!c) { toast('That card is no longer in the library.'); break; } pushUndo(); c.text = serialize(it.lines); scheduleSave(); toast(`Saved this text to ${c.name} in the library.`); break; }
+    case 'trk': pushUndo(); table.trackers[+b.dataset.i].value += +b.dataset.d; scheduleSave(); render(); break;
+    case 'step': { const it = table.inst[id]; const n = Math.max(1, it.lines.length); it.step = (it.step + (+b.dataset.d) + n) % n; scheduleSave(); render(); break; }
+    case 'draw': { pushUndo(); const n = drawCards(1); if (!n) { undoStack.pop(); toast('Your deck is empty. Shuffle your discard pile into it first.'); break; } scheduleSave(); render(); break; }
+    case 'shuffle': pushUndo(); table.zones.deck = shuffle(table.zones.deck); logMsg('Shuffled the deck.'); scheduleSave(); render(); toast('Deck shuffled.'); break;
+    case 'reshuffle': pushUndo(); table.zones.deck = table.zones.deck.concat(shuffle(table.zones.discard)); table.zones.discard = []; logMsg('Shuffled the discard pile into the deck.'); scheduleSave(); render(); break;
+    case 'endturn': pushUndo(); endTurn(); ui.selCard = null; ui.selTok = null; scheduleSave(); render(); break;
+    case 'undo': undo(); break;
+    case 'newgame': ui.newGame = !ui.newGame; if (ui.newGame && !Object.keys(ui.enemyPick).length) { const first = enemyCards()[0]; if (first) ui.enemyPick[first.id] = true; } render(); break;
+    case 'startgame': pushUndo(); newGame(enemyCards().filter((c) => ui.enemyPick[c.id]).map((c) => c.id)); ui.newGame = false; ui.selCard = null; ui.selTok = null; scheduleSave(); render(); break;
+    // library
+    case 'libsel': ui.editCardId = id; ui.selTok = null; ui.confirm = null; $('#libform').innerHTML = libFormHTML(); renderLibList(); renderLibPreview(); renderEditBar(); break;
+    case 'libnew': { pushUndo(); const c = { id: uid(), name: 'New card', type: ui.libFilter === 'Enemy' ? 'Enemy' : 'Card', cost: '1', copies: 0, text: 'Deal 5 to an enemy.', hp: 20, colors: [], notes: '' }; data.cards.unshift(c); ui.editCardId = c.id; ui.search = ''; scheduleSave(); render(); setTimeout(() => { const n = $('#cf-name'); if (n) { n.focus(); n.select(); } }, 0); break; }
+    case 'libdup': { const c = cardById(ui.editCardId); if (!c) break; pushUndo(); const d = { ...JSON.parse(JSON.stringify(c)), id: uid(), name: c.name + ' v2', copies: 0 }; data.cards.splice(data.cards.indexOf(c) + 1, 0, d); ui.editCardId = d.id; scheduleSave(); render(); toast('Made a variant. It starts with 0 copies in the deck.'); break; }
+    case 'libdel': { const c = cardById(ui.editCardId); if (!c) break; if (ui.confirm !== 'del:' + c.id) { ui.confirm = 'del:' + c.id; $('#libform').innerHTML = libFormHTML(); break; } pushUndo(); const i = data.cards.indexOf(c); data.cards.splice(i, 1); ui.editCardId = data.cards[Math.min(i, data.cards.length - 1)]?.id || null; ui.confirm = null; ui.selTok = null; scheduleSave(); render(); toast(`Deleted ${c.name}. Undo is on the Table tab.`); break; }
+    case 'libhand': { const c = cardById(ui.editCardId); if (!c) break; pushUndo(); const iid = makeInst(c); table.zones[c.type === 'Enemy' ? 'enemies' : 'hand'].push(iid); logMsg(`Added ${c.name} from the library.`); scheduleSave(); toast(`${c.name} is on the table, in your ${c.type === 'Enemy' ? 'enemies' : 'hand'}.`); break; }
+    case 'libfilter': ui.libFilter = b.dataset.f; document.querySelectorAll('[data-act="libfilter"]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.f === ui.libFilter)); renderLibList(); break;
+    case 'libcolor': ui.libColor = b.dataset.c; document.querySelectorAll('[data-act="libcolor"]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.c === ui.libColor)); renderLibList(); break;
+    case 'libauto': { const c = cardById(ui.editCardId); pushUndo(); c.colors = []; scheduleSave(); $('#libform').innerHTML = libFormHTML(); renderLibList(); renderLibPreview(); break; }
+    case 'libcol': { const c = cardById(ui.editCardId); pushUndo(); const col = b.dataset.c; if (!c.colors.length) c.colors = colorsOfLines(tokenize(c.text)); c.colors = c.colors.includes(col) ? c.colors.filter((x) => x !== col) : [...c.colors, col]; scheduleSave(); $('#libform').innerHTML = libFormHTML(); renderLibList(); renderLibPreview(); break; }
+    case 'kwfrom': { e.preventDefault(); pushUndo(); for (const w of (b.dataset.words || '').split('|')) if (w && !kwOf(w)) data.keywords.unshift({ id: uid(), word: w, color: '', opposite: '', meaning: '' }); rebuildIndex(); scheduleSave(); location.hash = 'keywords'; break; }
+    // keywords
+    case 'kwadd': pushUndo(); data.keywords.unshift({ id: uid(), word: 'New keyword', color: '', opposite: '', meaning: '' }); ui.kwSearch = ''; rebuildIndex(); scheduleSave(); render(); setTimeout(() => { const n = document.querySelector('[data-kf="word"]'); if (n) { n.focus(); n.select(); } }, 0); break;
+    case 'kwdel': { if (ui.confirm !== 'kw:' + id) { ui.confirm = 'kw:' + id; $('#kwtable').innerHTML = kwTableHTML(); break; } pushUndo(); data.keywords = data.keywords.filter((k) => k.id !== id); ui.confirm = null; rebuildIndex(); scheduleSave(); $('#kwtable').innerHTML = kwTableHTML(); $('#health').innerHTML = healthHTML(); break; }
+    case 'colup': case 'coldown': { const i = +b.dataset.i; const j = a === 'colup' ? i - 1 : i + 1; if (j < 0 || j >= data.colors.length) break; pushUndo(); [data.colors[i], data.colors[j]] = [data.colors[j], data.colors[i]]; rebuildIndex(); scheduleSave(); render(); break; }
+    case 'trkadd': pushUndo(); data.setup.trackers.push({ name: 'Counter', start: 0 }); scheduleSave(); render(); break;
+    case 'trkdel': pushUndo(); data.setup.trackers.splice(+b.dataset.i, 1); scheduleSave(); render(); break;
+    // save
+    case 'export': {
+      try { await downloads.save({ filename: (data.name || 'cut-the-deck').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + '.json', data: JSON.stringify(exportObj(), null, 2) }); toast('Save file downloaded.'); }
+      catch (err) { if (err && err.code === 'declined') toast('Download cancelled.'); else toast('Download isn’t available here. Use Copy save as text.'); }
+      break;
+    }
+    case 'copyjson': {
+      const text = JSON.stringify(exportObj(), null, 2);
+      try { await navigator.clipboard.writeText(text); toast('Copied. Paste it into a file or a message.'); }
+      catch (err) { const ta = $('#exportjson'); ta.value = text; ta.focus(); ta.select(); toast('Press Ctrl+C or ⌘C to copy the selected text.'); }
+      break;
+    }
+    case 'importload': { const t = $('#importtext').value.trim(); if (!t) { $('#importmsg').textContent = 'Pick a file or paste a save first.'; break; } importFrom(t); break; }
+    case 'reset': { if (ui.confirm !== 'reset') { ui.confirm = 'reset'; render(); break; } pushUndo(); data = starter(); rebuildIndex(); table = emptyTable(); newGame(enemyCards().slice(0, 1).map((c) => c.id), true); ui.confirm = null; scheduleSave(); render(); toast('Starter set restored. Undo is on the Table tab.'); break; }
+  }
+});
+
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('[data-form]'); if (!f) return;
+  e.preventDefault();
+  if (f.dataset.form === 'writeword') {
+    const v = $('#writeword').value.trim(); if (!v) return;
+    pushUndo(); const k = kwOf(v); table.clipboard.push({ w: k ? k.word : v }); ui.clipSel = table.clipboard.length - 1; scheduleSave(); render();
+    const n = $('#writeword'); if (n) n.focus();
+  } else if (f.dataset.form === 'addctr') {
+    const v = $('#ctrname').value.trim(); const id = ui.selCard; if (!v || !id) return;
+    pushUndo(); const k = kwOf(v); const name = k ? k.word : v; const it = table.inst[id]; it.counters[name] = (it.counters[name] || 0) + 1; scheduleSave(); render();
+  }
+});
+
+let editingUndoArmed = false;
+document.addEventListener('focusin', (e) => { if (e.target.matches('[data-cf],[data-kf],[data-colf],[data-sf],[data-tf],[data-bind]')) editingUndoArmed = true; });
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.matches('[data-cf],[data-kf],[data-colf],[data-sf],[data-tf],[data-bind]') && editingUndoArmed) { pushUndo(); editingUndoArmed = false; }
+  if (t.dataset.bind === 'name') { data.name = t.value; scheduleSave(); return; }
+  if (t.dataset.ui) { ui[t.dataset.ui] = t.value; if (t.dataset.ui === 'search') renderLibList(); else $('#kwtable').innerHTML = kwTableHTML(); return; }
+  if (t.dataset.cf) {
+    const c = cardById(ui.editCardId); if (!c) return; const f = t.dataset.cf;
+    if (f === 'copies' || f === 'hp') c[f] = Math.max(0, parseInt(t.value, 10) || 0);
+    else c[f] = t.value;
+    scheduleSave();
+    if (f === 'type') { $('#libform').innerHTML = libFormHTML(); }
+    renderLibList(); renderLibPreview(); return;
+  }
+  if (t.dataset.kf) {
+    const k = data.keywords.find((x) => x.id === t.dataset.id); if (!k) return; k[t.dataset.kf] = t.value;
+    if (t.dataset.kf === 'color') t.style.borderLeft = `6px solid ${hexOf(k.color)}`;
+    rebuildIndex(); scheduleSave(); $('#health').innerHTML = healthHTML(); return;
+  }
+  if (t.dataset.colf) {
+    const c = data.colors.find((x) => x.id === t.dataset.id); if (!c) return; c[t.dataset.colf] = t.value;
+    rebuildIndex(); scheduleSave(); $('#ring').innerHTML = ringHTML(); $('#health').innerHTML = healthHTML();
+    document.querySelectorAll('#colorlist .rel').forEach((el, i) => { el.innerHTML = relText(i); }); return;
+  }
+  if (t.dataset.sf) { data.setup[t.dataset.sf] = parseInt(t.value, 10) || 0; scheduleSave(); return; }
+  if (t.dataset.tf) { const tr = data.setup.trackers[+t.dataset.i]; if (t.dataset.tf === 'start') tr.start = parseInt(t.value, 10) || 0; else tr.name = t.value; scheduleSave(); return; }
+});
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.dataset.pick) { ui.enemyPick[t.dataset.pick] = t.checked; return; }
+  if (t.dataset.uiCheck) { ui[t.dataset.uiCheck] = t.checked; $('#exportjson').value = JSON.stringify(exportObj(), null, 2); return; }
+  if (t.dataset.imode) { ui.importMode = t.dataset.imode; return; }
+  if (t.id === 'importfile' && t.files && t.files[0]) {
+    const r = new FileReader();
+    r.onload = () => { $('#importtext').value = String(r.result || ''); $('#importmsg').textContent = `Read ${t.files[0].name}. Press Load.`; };
+    r.onerror = () => { $('#importmsg').textContent = 'Could not read that file.'; };
+    r.readAsText(t.files[0]);
+  }
+  if (t.dataset.kf === 'word' || t.dataset.kf === 'opposite') { $('#kwtable').innerHTML = kwTableHTML(); }
+});
+
+// drag and drop between zones (desktop)
+document.addEventListener('dragstart', (e) => { const c = e.target.closest && e.target.closest('.card[draggable="true"]'); if (!c) return; e.dataTransfer.setData('text/plain', c.dataset.id); e.dataTransfer.effectAllowed = 'move'; });
+document.addEventListener('dragover', (e) => { const z = e.target.closest && e.target.closest('[data-zone]'); if (!z || ui.view !== 'table') return; e.preventDefault(); z.classList.add('over'); });
+document.addEventListener('dragleave', (e) => { const z = e.target.closest && e.target.closest('[data-zone]'); if (z && !z.contains(e.relatedTarget)) z.classList.remove('over'); });
+document.addEventListener('drop', (e) => {
+  const z = e.target.closest && e.target.closest('[data-zone]'); if (!z) return; e.preventDefault();
+  const iid = e.dataTransfer.getData('text/plain'); if (!table.inst[iid]) return;
+  pushUndo(); moveInst(iid, z.dataset.zone, z.dataset.zone === 'deck'); logMsg(`${table.inst[iid].name} → ${z.dataset.zone === 'gone' ? 'removed' : z.dataset.zone}.`); scheduleSave(); render();
+});
+
+document.addEventListener('keydown', (e) => {
+  const typing = e.target.matches('input, textarea, select');
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undo(); }
+  else if (e.key === 'Escape') { ui.selTok = null; ui.selCard = null; ui.clipSel = null; rerender(); }
+});
+
+function route() {
+  const v = (location.hash || '#table').slice(1);
+  ui.view = ['table', 'cards', 'keywords', 'save'].includes(v) ? v : 'table';
+  ui.selTok = null; ui.selCard = null; ui.confirm = null;
+  render();
+}
+window.addEventListener('hashchange', route);
+
+load();
+route();
+setSaveState('Saved in this browser', true);
+(async () => {
+  try {
+    if (window.claude && window.claude.use) downloads = await window.claude.use('downloads');
+    else downloads = {
+      // On the plain website a normal file download works.
+      save: async ({ filename, data: body }) => {
+        const url = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+        const a = document.createElement('a'); a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return { status: 'saved' };
+      },
+    };
+    if (downloads && ui.view === 'save') render();
+  } catch (e) { downloads = null; }
+})();
+})();
+</script>
+
+</body>
 </html>
